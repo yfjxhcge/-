@@ -1,0 +1,336 @@
+-- 加载Rayfield库
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- 使用更隐蔽的方式设置密钥（不直接在代码中显示）
+local keyData = {"蒲" .. "公" .. "英"} -- 将密钥拆分成多个部分
+
+-- 创建窗口并配置密钥系统
+local Window = Rayfield:CreateWindow({
+    Name = "日奈 - 已验证",
+    LoadingTitle = "加载中...",
+    LoadingSubtitle = "正在初始化",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "配置"
+    },
+    KeySystem = true, -- 启用密钥系统
+    KeySettings = {
+        Title = "验证系统",
+        Subtitle = "请输入访问密钥",
+        Note = "请联系管理员获取密钥",
+        FileName = "AccessKey",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = keyData -- 使用变量而不是直接写密钥
+    }
+})
+
+-- 自动复制QQ号到剪贴板
+if setclipboard then
+    setclipboard("112472935")
+else
+    -- 如果setclipboard不可用，尝试其他方法
+    pcall(function()
+        local ClipBoard = game:GetService("ClipboardService")
+        ClipBoard:Set("112472935")
+    end)
+end
+
+-- 创建主标签页
+local MainTab = Window:CreateTab("主页面", 4483362458)
+
+-- 创建移动功能分区
+local MovementSection = MainTab:CreateSection("移动功能")
+
+-- 移动速度滑块
+local WalkSpeedSlider = MainTab:CreateSlider({
+    Name = "移动速度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "速度值",
+    CurrentValue = 16,
+    Flag = "WalkSpeed",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = Value
+            end
+        end
+    end,
+})
+
+-- 跳跃高度滑块
+local JumpPowerSlider = MainTab:CreateSlider({
+    Name = "跳跃高度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "高度值",
+    CurrentValue = 50,
+    Flag = "JumpPower",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = Value
+            end
+        end
+    end,
+})
+
+-- 飞行功能变量
+local flyEnabled = false
+local flySpeed = 50
+local flyBodyVelocity
+local flyConnection
+
+-- 飞行功能开关
+local FlyToggle = MainTab:CreateToggle({
+    Name = "飞行功能",
+    CurrentValue = false,
+    Flag = "Fly",
+    Callback = function(Value)
+        flyEnabled = Value
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "角色未加载完成，请稍后再试",
+                Duration = 3,
+            })
+            return
+        end
+        
+        if flyEnabled then
+            Rayfield:Notify({
+                Title = "飞行功能",
+                Content = "飞行功能已激活 - 使用WASD控制方向，空格上升，Shift下降",
+                Duration = 5,
+            })
+            
+            -- 创建飞行体
+            flyBodyVelocity = Instance.new("BodyVelocity")
+            flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            flyBodyVelocity.MaxForce = Vector3.new(40000, 40000, 40000)
+            flyBodyVelocity.Parent = character.HumanoidRootPart
+            
+            -- 飞行控制连接
+            flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                if not flyEnabled or not character or not character.Parent then
+                    if flyConnection then
+                        flyConnection:Disconnect()
+                    end
+                    return
+                end
+                
+                local root = character.HumanoidRootPart
+                if not root then
+                    if flyConnection then
+                        flyConnection:Disconnect()
+                    end
+                    return
+                end
+                
+                -- 获取相机方向
+                local camera = workspace.CurrentCamera
+                local lookVector = camera.CFrame.LookVector
+                local rightVector = camera.CFrame.RightVector
+                
+                -- 飞行控制
+                local velocity = Vector3.new(0, 0, 0)
+                
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                    velocity = velocity + (lookVector * flySpeed)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                    velocity = velocity - (lookVector * flySpeed)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                    velocity = velocity + (rightVector * flySpeed)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                    velocity = velocity - (rightVector * flySpeed)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                    velocity = velocity + Vector3.new(0, flySpeed, 0)
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
+                    velocity = velocity - Vector3.new(0, flySpeed, 0)
+                end
+                
+                flyBodyVelocity.Velocity = velocity
+            end)
+        else
+            Rayfield:Notify({
+                Title = "飞行功能",
+                Content = "飞行功能已关闭",
+                Duration = 3,
+            })
+            
+            -- 移除飞行体
+            if flyBodyVelocity then
+                flyBodyVelocity:Destroy()
+                flyBodyVelocity = nil
+            end
+            
+            -- 断开连接
+            if flyConnection then
+                flyConnection:Disconnect()
+                flyConnection = nil
+            end
+        end
+    end,
+})
+
+-- 飞行速度滑块
+local FlySpeedSlider = MainTab:CreateSlider({
+    Name = "飞行速度",
+    Range = {10, 200},
+    Increment = 5,
+    Suffix = "速度值",
+    CurrentValue = 50,
+    Flag = "FlySpeed",
+    Callback = function(Value)
+        flySpeed = Value
+    end,
+})
+
+-- 穿墙模式功能
+local noclipEnabled = false
+local noclipConnection
+
+local NoClipToggle = MainTab:CreateToggle({
+    Name = "穿墙功能",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        noclipEnabled = Value
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if not character then
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "角色未加载完成，请稍后再试",
+                Duration = 3,
+            })
+            return
+        end
+        
+        if noclipEnabled then
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已激活",
+                Duration = 3,
+            })
+            
+            -- 穿墙逻辑
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                if not noclipEnabled or not character or not character.Parent then
+                    if noclipConnection then
+                        noclipConnection:Disconnect()
+                    end
+                    return
+                end
+                
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已关闭",
+                Duration = 3,
+            })
+            
+            -- 断开连接
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+            
+            -- 恢复碰撞
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- 角色重生时重置所有功能
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    -- 等待角色完全加载
+    character:WaitForChild("Humanoid")
+    
+    -- 重新应用移动速度设置
+    local walkSpeedValue = Rayfield.Flags["WalkSpeed"]
+    if walkSpeedValue then
+        character.Humanoid.WalkSpeed = walkSpeedValue
+    end
+    
+    -- 重新应用跳跃高度设置
+    local jumpPowerValue = Rayfield.Flags["JumpPower"]
+    if jumpPowerValue then
+        character.Humanoid.JumpPower = jumpPowerValue
+    end
+    
+    -- 重置飞行状态
+    flyEnabled = false
+    if flyBodyVelocity then
+        flyBodyVelocity:Destroy()
+        flyBodyVelocity = nil
+    end
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+    
+    -- 更新飞行开关状态
+    if FlyToggle then
+        FlyToggle:Set(false)
+    end
+    
+    -- 重置穿墙状态
+    noclipEnabled = false
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    
+    -- 更新穿墙开关状态
+    if NoClipToggle then
+        NoClipToggle:Set(false)
+    end
+end)
+
+-- 验证通过后显示的通知
+Rayfield:Notify({
+    Title = "验证成功",
+    Content = "欢迎使用！QQ号:112472935 已自动复制到剪贴板",
+    Duration = 5,
+    Image = 4483362458,
+    Actions = {
+        Ignore = {
+            Name = "确定",
+            Callback = function()
+                print("用户确认了通知")
+            end
+        }
+    }
+})
