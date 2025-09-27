@@ -1,0 +1,790 @@
+-- 显示加载动画
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "LoadingGui"
+loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+loadingGui.ResetOnSpawn = false
+
+local loadingFrame = Instance.new("Frame")
+loadingFrame.Size = UDim2.new(0, 350, 0, 200)
+loadingFrame.Position = UDim2.new(0.5, -175, 0.5, -100)
+loadingFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+loadingFrame.BorderSizePixel = 0
+loadingFrame.Parent = loadingGui
+
+local loadingCorner = Instance.new("UICorner")
+loadingCorner.CornerRadius = UDim.new(0, 15)
+loadingCorner.Parent = loadingFrame
+
+-- 标题
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.Position = UDim2.new(0, 0, 0, 10)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "🎵 日奈脚本加载中 🎵"
+titleLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
+titleLabel.TextSize = 24
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = loadingFrame
+
+-- 进度条背景
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(0.8, 0, 0, 25)
+progressBar.Position = UDim2.new(0.1, 0, 0.4, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+progressBar.BorderSizePixel = 0
+progressBar.Parent = loadingFrame
+
+local progressBarCorner = Instance.new("UICorner")
+progressBarCorner.CornerRadius = UDim.new(0, 12)
+progressBarCorner.Parent = progressBar
+
+-- 进度条填充
+local progressFill = Instance.new("Frame")
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+progressFill.BorderSizePixel = 0
+progressFill.Parent = progressBar
+
+local progressFillCorner = Instance.new("UICorner")
+progressFillCorner.CornerRadius = UDim.new(0, 12)
+progressFillCorner.Parent = progressFill
+
+-- 进度百分比
+local percentLabel = Instance.new("TextLabel")
+percentLabel.Size = UDim2.new(1, 0, 0, 25)
+percentLabel.Position = UDim2.new(0, 0, 0.3, 0)
+percentLabel.BackgroundTransparency = 1
+percentLabel.Text = "0%"
+percentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+percentLabel.TextSize = 18
+percentLabel.Font = Enum.Font.GothamBold
+percentLabel.Parent = loadingFrame
+
+-- 状态文本
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0.6, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "正在初始化..."
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.TextSize = 16
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = loadingFrame
+
+-- 音乐图标
+local musicIcon = Instance.new("TextLabel")
+musicIcon.Size = UDim2.new(0, 40, 0, 40)
+musicIcon.Position = UDim2.new(0.5, -20, 0.8, 0)
+musicIcon.BackgroundTransparency = 1
+musicIcon.Text = "🎶"
+musicIcon.TextColor3 = Color3.fromRGB(255, 215, 0)
+musicIcon.TextSize = 30
+musicIcon.Parent = loadingFrame
+
+-- 当前播放的音乐显示
+local musicLabel = Instance.new("TextLabel")
+musicLabel.Size = UDim2.new(1, 0, 0, 20)
+musicLabel.Position = UDim2.new(0, 0, 0.75, 0)
+musicLabel.BackgroundTransparency = 1
+musicLabel.Text = "当前播放: ..."
+musicLabel.TextColor3 = Color3.fromRGB(170, 170, 255)
+musicLabel.TextSize = 14
+musicLabel.Font = Enum.Font.Gotham
+musicLabel.Parent = loadingFrame
+
+-- 更新进度条函数
+local function updateProgress(progress, status)
+    progressFill.Size = UDim2.new(progress, 0, 1, 0)
+    percentLabel.Text = math.floor(progress * 100) .. "%"
+    statusLabel.Text = status
+    
+    -- 让音乐图标跳动
+    musicIcon:TweenSize(UDim2.new(0, 45, 0, 45), "Out", "Quad", 0.3, true)
+    wait(0.2)
+    musicIcon:TweenSize(UDim2.new(0, 40, 0, 40), "Out", "Quad", 0.3, true)
+    
+    wait(0.1) -- 模拟加载时间
+end
+
+-- 随机音乐播放系统
+local function playRandomMusic()
+    -- 音乐列表：Iron Lotus 和 虚荣屠夫
+    local musicList = {
+        {
+            name = "Iron Lotus",
+            id = "rbxassetid://9117342830"  -- 示例音乐ID，可以替换为实际ID
+        },
+        {
+            name = "虚荣屠夫", 
+            id = "rbxassetid://9117342845"  -- 示例音乐ID，可以替换为实际ID
+        }
+    }
+    
+    -- 随机选择一首音乐
+    local randomMusic = musicList[math.random(1, #musicList)]
+    
+    -- 创建声音服务
+    local soundService = game:GetService("SoundService")
+    local backgroundSound = Instance.new("Sound")
+    backgroundSound.SoundId = randomMusic.id
+    backgroundSound.Volume = 0.5
+    backgroundSound.Looped = true
+    backgroundSound.Parent = soundService
+    
+    -- 更新音乐显示
+    musicLabel.Text = "当前播放: " .. randomMusic.name
+    
+    -- 播放音乐
+    backgroundSound:Play()
+    
+    return backgroundSound
+end
+
+-- 开始加载过程
+updateProgress(0.1, "正在启动音乐系统...")
+
+-- 开始播放随机音乐
+local backgroundMusic = playRandomMusic()
+
+updateProgress(0.2, "正在加载Rayfield库...")
+
+-- 加载Rayfield库
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+updateProgress(0.4, "正在初始化窗口...")
+
+-- 使用更隐蔽的方式设置密钥（不直接在代码中显示）
+local keyData = {"蒲" .. "公" .. "英"} -- 将密钥拆分成多个部分
+
+-- 创建窗口并配置密钥系统
+local Window = Rayfield:CreateWindow({
+    Name = "日奈 - 已验证",
+    LoadingTitle = "加载中...",
+    LoadingSubtitle = "正在初始化",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "配置"
+    },
+    KeySystem = true, -- 启用密钥系统
+    KeySettings = {
+        Title = "验证系统",
+        Subtitle = "请输入访问密钥",
+        Note = "请联系管理员获取密钥",
+        FileName = "AccessKey",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = keyData -- 使用变量而不是直接写密钥
+    }
+})
+
+updateProgress(0.5, "正在设置基础功能...")
+
+-- 自动复制QQ号到剪贴板
+if setclipboard then
+    setclipboard("112472935")
+else
+    -- 如果setclipboard不可用，尝试其他方法
+    pcall(function()
+        local ClipBoard = game:GetService("ClipboardService")
+        ClipBoard:Set("112472935")
+    end)
+end
+
+updateProgress(0.6, "正在创建主界面...")
+
+-- 创建主标签页
+local MainTab = Window:CreateTab("主页面", 4483362458)
+
+-- 创建移动功能分区
+local MovementSection = MainTab:CreateSection("移动功能")
+
+updateProgress(0.7, "正在添加移动功能...")
+
+-- 移动速度滑块
+local WalkSpeedSlider = MainTab:CreateSlider({
+    Name = "移动速度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "速度值",
+    CurrentValue = 16,
+    Flag = "WalkSpeed",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = Value
+            end
+        end
+    end,
+})
+
+-- 跳跃高度滑块
+local JumpPowerSlider = MainTab:CreateSlider({
+    Name = "跳跃高度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "高度值",
+    CurrentValue = 50,
+    Flag = "JumpPower",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = Value
+            end
+        end
+    end,
+})
+
+updateProgress(0.75, "正在添加飞行功能...")
+
+-- 外部飞行脚本按钮
+local ExternalFlyButton = MainTab:CreateButton({
+    Name = "加载飞行脚本 V3",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "飞行脚本",
+            Content = "正在加载 FlyGui V3 脚本...",
+            Duration = 3,
+        })
+        
+        -- 执行外部飞行脚本
+        local success, errorMessage = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+        end)
+        
+        if success then
+            Rayfield:Notify({
+                Title = "飞行脚本",
+                Content = "FlyGui V3 加载成功！",
+                Duration = 5,
+            })
+        else
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "飞行脚本加载失败: " .. tostring(errorMessage),
+                Duration = 5,
+            })
+        end
+    end,
+})
+
+updateProgress(0.8, "正在添加特殊功能...")
+
+-- 穿墙模式功能
+local noclipEnabled = false
+local noclipConnection
+
+local NoClipToggle = MainTab:CreateToggle({
+    Name = "穿墙功能",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        noclipEnabled = Value
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if not character then
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "角色未加载完成，请稍后再试",
+                Duration = 3,
+            })
+            return
+        end
+        
+        if noclipEnabled then
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已激活",
+                Duration = 3,
+            })
+            
+            -- 穿墙逻辑
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                if not noclipEnabled or not character or not character.Parent then
+                    if noclipConnection then
+                        noclipConnection:Disconnect()
+                    end
+                    return
+                end
+                
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已关闭",
+                Duration = 3,
+            })
+            
+            -- 断开连接
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+            
+            -- 恢复碰撞
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- 无限跳跃功能
+local InfiniteJumpEnabled = false
+local InfiniteJumpConnection
+
+local InfiniteJumpToggle = MainTab:CreateToggle({
+    Name = "无限跳跃",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        InfiniteJumpEnabled = Value
+        
+        if InfiniteJumpEnabled then
+            Rayfield:Notify({
+                Title = "无限跳跃",
+                Content = "无限跳跃已激活",
+                Duration = 3,
+            })
+            
+            InfiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+                if InfiniteJumpEnabled then
+                    local character = game.Players.LocalPlayer.Character
+                    if character and character:FindFirstChildOfClass("Humanoid") then
+                        character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "无限跳跃",
+                Content = "无限跳跃已关闭",
+                Duration = 3,
+            })
+            
+            if InfiniteJumpConnection then
+                InfiniteJumpConnection:Disconnect()
+                InfiniteJumpConnection = nil
+            end
+        end
+    end,
+})
+
+updateProgress(0.85, "正在设置角色重生事件...")
+
+-- 角色重生时重置所有功能
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    -- 等待角色完全加载
+    character:WaitForChild("Humanoid")
+    
+    -- 重新应用移动速度设置
+    local walkSpeedValue = Rayfield.Flags["WalkSpeed"]
+    if walkSpeedValue then
+        character.Humanoid.WalkSpeed = walkSpeedValue
+    end
+    
+    -- 重新应用跳跃高度设置
+    local jumpPowerValue = Rayfield.Flags["JumpPower"]
+    if jumpPowerValue then
+        character.Humanoid.JumpPower = jumpPowerValue
+    end
+    
+    -- 重置穿墙状态
+    noclipEnabled = false
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    
+    -- 更新穿墙开关状态
+    if NoClipToggle then
+        NoClipToggle:Set(false)
+    end
+    
+    -- 无限跳跃状态保持不变（因为它是全局的）
+end)
+
+updateProgress(0.9, "正在创建工具页面...")
+
+-- 添加工具标签页
+local ToolsTab = Window:CreateTab("工具", 4483362458)
+
+-- 服务器信息
+local ServerSection = ToolsTab:CreateSection("服务器信息")
+
+local ServerInfoButton = ToolsTab:CreateButton({
+    Name = "显示服务器信息",
+    Callback = function()
+        local players = game:GetService("Players")
+        local playerCount = #players:GetPlayers()
+        local maxPlayers = game.Players.MaxPlayers
+        local placeId = game.PlaceId
+        local jobId = game.JobId
+        
+        Rayfield:Notify({
+            Title = "服务器信息",
+            Content = string.format("玩家人数: %d/%d\n地图ID: %s\n服务器ID: %s", playerCount, maxPlayers, placeId, jobId),
+            Duration = 10,
+        })
+    end,
+})
+
+-- 玩家列表和传送功能
+local PlayerSection = ToolsTab:CreateSection("玩家传送")
+
+-- 存储选中的玩家
+local selectedPlayer = ""
+
+-- 玩家下拉菜单
+local PlayerDropdown = ToolsTab:CreateDropdown({
+    Name = "选择要传送的玩家",
+    Options = {},
+    CurrentOption = "",
+    Flag = "PlayerSelector",
+    Callback = function(Option)
+        selectedPlayer = Option
+        Rayfield:Notify({
+            Title = "玩家选择",
+            Content = "已选择玩家: " .. Option,
+            Duration = 3,
+        })
+    end,
+})
+
+-- 修复传送功能
+local function teleportToPlayer(playerName)
+    local success, errorMessage = pcall(function()
+        -- 获取目标玩家
+        local targetPlayer = game:GetService("Players"):FindFirstChild(playerName)
+        if not targetPlayer then
+            error("找不到玩家: " .. playerName)
+            return
+        end
+        
+        -- 等待目标角色加载
+        if not targetPlayer.Character then
+            error("目标玩家角色未加载")
+            return
+        end
+        
+        -- 获取角色根部件（兼容R6和R15）
+        local function getCharacterRoot(character)
+            -- 尝试获取HumanoidRootPart（R15）
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                return rootPart
+            end
+            
+            -- 尝试获取Torso（R6）
+            local torso = character:FindFirstChild("Torso")
+            if torso then
+                return torso
+            end
+            
+            -- 尝试获取UpperTorso（R15备用）
+            local upperTorso = character:FindFirstChild("UpperTorso")
+            if upperTorso then
+                return upperTorso
+            end
+            
+            error("找不到角色的根部件")
+            return nil
+        end
+        
+        -- 获取本地玩家角色
+        local localPlayer = game.Players.LocalPlayer
+        if not localPlayer.Character then
+            error("你的角色未加载")
+            return
+        end
+        
+        -- 获取双方角色的根部件
+        local targetRoot = getCharacterRoot(targetPlayer.Character)
+        local localRoot = getCharacterRoot(localPlayer.Character)
+        
+        if not targetRoot or not localRoot then
+            error("无法找到传送位置")
+            return
+        end
+        
+        -- 执行传送（稍微偏移避免卡在玩家内部）
+        local offset = CFrame.new(0, 0, 3)
+        localRoot.CFrame = targetRoot.CFrame * offset
+        
+        return true
+    end)
+    
+    return success, errorMessage
+end
+
+-- 传送按钮
+local TeleportButton = ToolsTab:CreateButton({
+    Name = "传送到选中玩家",
+    Callback = function()
+        if selectedPlayer and selectedPlayer ~= "" then
+            local success, errorMessage = teleportToPlayer(selectedPlayer)
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "传送成功",
+                    Content = "已传送到玩家: " .. selectedPlayer,
+                    Duration = 5,
+                    Image = 4483362458,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "传送失败",
+                    Content = "错误: " .. tostring(errorMessage),
+                    Duration = 5,
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "传送失败",
+                Content = "请先选择一个玩家",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 重生点传送功能
+local SpawnTPButton = ToolsTab:CreateButton({
+    Name = "传送到重生点",
+    Callback = function()
+        local success, errorMessage = pcall(function()
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            
+            if not character then
+                error("角色未加载")
+                return
+            end
+            
+            local rootPart = character:FindFirstChild("HumanoidRootPart") 
+                or character:FindFirstChild("Torso") 
+                or character:FindFirstChild("UpperTorso")
+            
+            if not rootPart then
+                error("找不到角色根部件")
+                return
+            end
+            
+            -- 寻找重生点
+            local spawnLocation = workspace:FindFirstChild("SpawnLocation") 
+                or workspace:FindFirstChild("Spawn")
+                or workspace:FindFirstChild("SpawnPoint")
+            
+            if spawnLocation then
+                rootPart.CFrame = spawnLocation.CFrame
+            else
+                -- 如果没有找到重生点，传送到地图中心
+                rootPart.CFrame = CFrame.new(0, 10, 0)
+            end
+        end)
+        
+        if success then
+            Rayfield:Notify({
+                Title = "传送成功",
+                Content = "已传送到目标位置",
+                Duration = 3,
+            })
+        else
+            Rayfield:Notify({
+                Title = "传送失败",
+                Content = "错误: " .. tostring(errorMessage),
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 更新玩家列表函数
+local function updatePlayerList()
+    local players = game:GetService("Players"):GetPlayers()
+    local playerNames = {}
+    
+    for _, player in ipairs(players) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(playerNames, player.Name)
+        end
+    end
+    
+    if #playerNames == 0 then
+        table.insert(playerNames, "暂无其他玩家")
+    end
+    
+    PlayerDropdown:Refresh(playerNames, true)
+end
+
+-- 玩家加入/离开时更新列表
+game:GetService("Players").PlayerAdded:Connect(updatePlayerList)
+game:GetService("Players").PlayerRemoved:Connect(updatePlayerList)
+
+-- 初始化玩家列表
+updatePlayerList()
+
+-- 重置角色功能
+local ResetSection = ToolsTab:CreateSection("角色控制")
+
+local ResetButton = ToolsTab:CreateButton({
+    Name = "重置角色",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        if player.Character then
+            player.Character:BreakJoints()
+            Rayfield:Notify({
+                Title = "角色重置",
+                Content = "角色已重置",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+updateProgress(0.95, "正在完成最后设置...")
+
+-- 添加设置标签页
+local SettingsTab = Window:CreateTab("设置", 4483362458)
+
+-- 音乐控制功能
+local MusicSection = SettingsTab:CreateSection("音乐控制")
+
+local MusicToggle = SettingsTab:CreateToggle({
+    Name = "背景音乐",
+    CurrentValue = true,
+    Flag = "BackgroundMusic",
+    Callback = function(Value)
+        if Value then
+            if backgroundMusic then
+                backgroundMusic:Play()
+                Rayfield:Notify({
+                    Title = "音乐控制",
+                    Content = "背景音乐已开启",
+                    Duration = 3,
+                })
+            end
+        else
+            if backgroundMusic then
+                backgroundMusic:Pause()
+                Rayfield:Notify({
+                    Title = "音乐控制",
+                    Content = "背景音乐已暂停",
+                    Duration = 3,
+                })
+            end
+        end
+    end,
+})
+
+local ChangeMusicButton = SettingsTab:CreateButton({
+    Name = "切换随机音乐",
+    Callback = function()
+        if backgroundMusic then
+            backgroundMusic:Stop()
+            backgroundMusic:Destroy()
+        end
+        backgroundMusic = playRandomMusic()
+        Rayfield:Notify({
+            Title = "音乐切换",
+            Content = "已切换到随机音乐",
+            Duration = 3,
+        })
+    end,
+})
+
+-- 界面设置
+local InterfaceSection = SettingsTab:CreateSection("界面设置")
+
+local HideInterfaceToggle = SettingsTab:CreateKeybind({
+    Name = "隐藏/显示界面",
+    CurrentKeybind = "RightShift",
+    HoldToInteract = false,
+    Flag = "HideInterfaceKeybind",
+    Callback = function(Keybind)
+        Rayfield:Notify({
+            Title = "界面控制",
+            Content = "按 " .. Keybind .. " 可以隐藏/显示界面",
+            Duration = 3,
+        })
+    end,
+})
+
+-- 销毁脚本按钮
+local DestroyScriptButton = SettingsTab:CreateButton({
+    Name = "销毁脚本",
+    Callback = function()
+        -- 停止音乐
+        if backgroundMusic then
+            backgroundMusic:Stop()
+        end
+        Rayfield:Destroy()
+        Rayfield:Notify({
+            Title = "脚本已销毁",
+            Content = "所有功能已关闭，界面已销毁",
+            Duration = 3,
+        })
+    end,
+})
+
+-- 关于信息
+local AboutSection = SettingsTab:CreateSection("关于")
+
+local AboutButton = SettingsTab:CreateButton({
+    Name = "关于脚本",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "关于日奈脚本",
+            Content = "版本: 1.0\n作者: 日奈\nQQ: 112472935\n功能: 移动修改、飞行、传送等",
+            Duration = 10,
+        })
+    end,
+})
+
+updateProgress(1.0, "加载完成！")
+
+-- 延迟关闭加载界面
+wait(1)
+
+-- 淡出效果
+for i = 1, 10 do
+    loadingFrame.BackgroundTransparency = i * 0.1
+    wait(0.05)
+end
+
+-- 移除加载界面
+loadingGui:Destroy()
+
+-- 验证通过后显示的通知
+Rayfield:Notify({
+    Title = "验证成功",
+    Content = "欢迎使用日奈脚本！背景音乐已开始播放",
+    Duration = 5,
+    Image = 4483362458,
+    Actions = {
+        Ignore = {
+            Name = "确定",
+            Callback = function()
+                print("用户确认了通知")
+            end
+        }
+    }
+})
