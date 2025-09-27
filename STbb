@@ -1,0 +1,143 @@
+-- 创建UI界面
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ST_CharacterSwitcher"
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+
+-- 主面板
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 300, 0, 120)
+MainFrame.Position = UDim2.new(0.5, -150, 0.9, -60) -- 底部居中
+MainFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.new(0.4, 0.4, 0.4)
+MainFrame.BackgroundTransparency = 0.2
+MainFrame.Active = true
+MainFrame.Selectable = true
+MainFrame.Parent = ScreenGui
+
+-- 标题
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(1, 0, 0, 25)
+TitleLabel.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+TitleLabel.Text = "角色切换"
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.TextScaled = true
+TitleLabel.Parent = MainFrame
+
+-- 状态显示
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0, 0, 0, 25)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "当前角色: 角色1"
+StatusLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+StatusLabel.TextSize = 14
+StatusLabel.Parent = MainFrame
+
+-- 角色按钮容器
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Name = "ButtonContainer"
+ButtonContainer.Size = UDim2.new(1, 0, 0, 75)
+ButtonContainer.Position = UDim2.new(0, 0, 0, 45)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Parent = MainFrame
+
+-- 创建角色切换按钮（示例4个角色）
+local characterNames = {"角色1", "角色2", "角色3", "角色4"} -- 对应角色ID的名称
+local buttons = {}
+
+for i = 1, 4 do
+    local btn = Instance.new("TextButton")
+    btn.Name = "CharacterBtn_" .. i
+    btn.Size = UDim2.new(0.22, 0, 0.8, 0)
+    btn.Position = UDim2.new((i-1)*0.25 + 0.015, 0, 0.1, 0)
+    btn.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+    btn.Text = characterNames[i] .. "\n(" .. i .. "键)"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.TextSize = 12
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.new(0.6, 0.6, 0.6)
+    btn.Parent = ButtonContainer
+    
+    -- 按钮点击事件
+    btn.MouseButton1Click:Connect(function()
+        switchCharacter(characterIds[i])
+    end)
+    
+    table.insert(buttons, btn)
+end
+
+-- 功能逻辑部分
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+
+-- 角色ID列表（需替换为游戏内实际可用的角色ID）
+local characterIds = {1, 2, 3, 4} -- 示例ID，需根据游戏实际数据修改
+local currentCharacterIndex = 1
+
+-- 查找游戏内角色切换事件（关键：需与游戏实际事件名称匹配）
+local switchCharacterEvent = ReplicatedStorage:FindFirstChild("SwitchCharacterEvent")
+    or ReplicatedStorage:FindFirstChild("ChangeCharacter")
+    or ReplicatedStorage:FindFirstChild("SwapCharacter")
+
+-- 切换角色函数
+local function switchCharacter(characterId)
+    if not switchCharacterEvent then
+        StatusLabel.Text = "错误：未找到切换事件"
+        StatusLabel.TextColor3 = Color3.new(1, 0.3, 0.3)
+        return
+    end
+    
+    -- 发送切换请求到服务器
+    local success, err = pcall(function()
+        switchCharacterEvent:FireServer(characterId)
+    end)
+    
+    if success then
+        -- 更新当前角色索引
+        for i, id in ipairs(characterIds) do
+            if id == characterId then
+                currentCharacterIndex = i
+                StatusLabel.Text = "当前角色: " .. characterNames[i]
+                StatusLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+                break
+            end
+        end
+    else
+        StatusLabel.Text = "切换失败: " .. err
+        StatusLabel.TextColor3 = Color3.new(1, 0.3, 0.3)
+    end
+end
+
+-- 键盘快捷键（1-4键）
+UserInputService.InputBegan:Connect(function(input, isTyping)
+    if isTyping then return end
+    
+    local keyMap = {
+        [Enum.KeyCode.One] = 1,
+        [Enum.KeyCode.Two] = 2,
+        [Enum.KeyCode.Three] = 3,
+        [Enum.KeyCode.Four] = 4
+    }
+    
+    local index = keyMap[input.KeyCode]
+    if index and characterIds[index] then
+        switchCharacter(characterIds[index])
+    end
+end)
+
+-- 监听角色加载完成，更新状态
+localPlayer.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    StatusLabel.Text = "已切换到: " .. characterNames[currentCharacterIndex]
+    StatusLabel.TextColor3 = Color3.new(0.3, 1, 0.3)
+end)
+
+print("角色切换UI已加载，可点击按钮或按1-4键切换角色")
