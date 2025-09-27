@@ -1,0 +1,525 @@
+-- 加载Rayfield库
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- 使用更隐蔽的方式设置密钥（不直接在代码中显示）
+local keyData = {"蒲" .. "公" .. "英"} -- 将密钥拆分成多个部分
+
+-- 创建窗口并配置密钥系统
+local Window = Rayfield:CreateWindow({
+    Name = "日奈 - 已验证",
+    LoadingTitle = "加载中...",
+    LoadingSubtitle = "正在初始化",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "配置"
+    },
+    KeySystem = true, -- 启用密钥系统
+    KeySettings = {
+        Title = "验证系统",
+        Subtitle = "请输入访问密钥",
+        Note = "请联系管理员获取密钥",
+        FileName = "AccessKey",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = keyData -- 使用变量而不是直接写密钥
+    }
+})
+
+-- 自动复制QQ号到剪贴板
+if setclipboard then
+    setclipboard("112472935")
+else
+    -- 如果setclipboard不可用，尝试其他方法
+    pcall(function()
+        local ClipBoard = game:GetService("ClipboardService")
+        ClipBoard:Set("112472935")
+    end)
+end
+
+-- 创建主标签页
+local MainTab = Window:CreateTab("主页面", 4483362458)
+
+-- 创建移动功能分区
+local MovementSection = MainTab:CreateSection("移动功能")
+
+-- 移动速度滑块
+local WalkSpeedSlider = MainTab:CreateSlider({
+    Name = "移动速度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "速度值",
+    CurrentValue = 16,
+    Flag = "WalkSpeed",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = Value
+            end
+        end
+    end,
+})
+
+-- 跳跃高度滑块
+local JumpPowerSlider = MainTab:CreateSlider({
+    Name = "跳跃高度",
+    Range = {0, 100},
+    Increment = 1,
+    Suffix = "高度值",
+    CurrentValue = 50,
+    Flag = "JumpPower",
+    Callback = function(Value)
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = Value
+            end
+        end
+    end,
+})
+
+-- 外部飞行脚本按钮 - 使用新的GitHub链接
+local ExternalFlyButton = MainTab:CreateButton({
+    Name = "加载飞行脚本 V3",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "飞行脚本",
+            Content = "正在加载 FlyGui V3 脚本...",
+            Duration = 3,
+        })
+        
+        -- 执行外部飞行脚本
+        local success, errorMessage = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+        end)
+        
+        if success then
+            Rayfield:Notify({
+                Title = "飞行脚本",
+                Content = "FlyGui V3 加载成功！",
+                Duration = 5,
+            })
+        else
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "飞行脚本加载失败: " .. tostring(errorMessage),
+                Duration = 5,
+            })
+        end
+    end,
+})
+
+-- 穿墙模式功能
+local noclipEnabled = false
+local noclipConnection
+
+local NoClipToggle = MainTab:CreateToggle({
+    Name = "穿墙功能",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        noclipEnabled = Value
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if not character then
+            Rayfield:Notify({
+                Title = "错误",
+                Content = "角色未加载完成，请稍后再试",
+                Duration = 3,
+            })
+            return
+        end
+        
+        if noclipEnabled then
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已激活",
+                Duration = 3,
+            })
+            
+            -- 穿墙逻辑
+            noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                if not noclipEnabled or not character or not character.Parent then
+                    if noclipConnection then
+                        noclipConnection:Disconnect()
+                    end
+                    return
+                end
+                
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已关闭",
+                Duration = 3,
+            })
+            
+            -- 断开连接
+            if noclipConnection then
+                noclipConnection:Disconnect()
+                noclipConnection = nil
+            end
+            
+            -- 恢复碰撞
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+    end,
+})
+
+-- 无限跳跃功能
+local InfiniteJumpEnabled = false
+local InfiniteJumpConnection
+
+local InfiniteJumpToggle = MainTab:CreateToggle({
+    Name = "无限跳跃",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        InfiniteJumpEnabled = Value
+        
+        if InfiniteJumpEnabled then
+            Rayfield:Notify({
+                Title = "无限跳跃",
+                Content = "无限跳跃已激活",
+                Duration = 3,
+            })
+            
+            InfiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+                if InfiniteJumpEnabled then
+                    local character = game.Players.LocalPlayer.Character
+                    if character and character:FindFirstChildOfClass("Humanoid") then
+                        character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                    end
+                end
+            end)
+        else
+            Rayfield:Notify({
+                Title = "无限跳跃",
+                Content = "无限跳跃已关闭",
+                Duration = 3,
+            })
+            
+            if InfiniteJumpConnection then
+                InfiniteJumpConnection:Disconnect()
+                InfiniteJumpConnection = nil
+            end
+        end
+    end,
+})
+
+-- 角色重生时重置所有功能
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    -- 等待角色完全加载
+    character:WaitForChild("Humanoid")
+    
+    -- 重新应用移动速度设置
+    local walkSpeedValue = Rayfield.Flags["WalkSpeed"]
+    if walkSpeedValue then
+        character.Humanoid.WalkSpeed = walkSpeedValue
+    end
+    
+    -- 重新应用跳跃高度设置
+    local jumpPowerValue = Rayfield.Flags["JumpPower"]
+    if jumpPowerValue then
+        character.Humanoid.JumpPower = jumpPowerValue
+    end
+    
+    -- 重置穿墙状态
+    noclipEnabled = false
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    
+    -- 更新穿墙开关状态
+    if NoClipToggle then
+        NoClipToggle:Set(false)
+    end
+    
+    -- 无限跳跃状态保持不变（因为它是全局的）
+end)
+
+-- 验证通过后显示的通知
+Rayfield:Notify({
+    Title = "验证成功",
+    Content = "欢迎使用！QQ号:112472935 已自动复制到剪贴板",
+    Duration = 5,
+    Image = 4483362458,
+    Actions = {
+        Ignore = {
+            Name = "确定",
+            Callback = function()
+                print("用户确认了通知")
+            end
+        }
+    }
+})
+
+-- 添加工具标签页
+local ToolsTab = Window:CreateTab("工具", 4483362458)
+
+-- 服务器信息
+local ServerSection = ToolsTab:CreateSection("服务器信息")
+
+local ServerInfoButton = ToolsTab:CreateButton({
+    Name = "显示服务器信息",
+    Callback = function()
+        local players = game:GetService("Players")
+        local playerCount = #players:GetPlayers()
+        local maxPlayers = game.Players.MaxPlayers
+        local placeId = game.PlaceId
+        local jobId = game.JobId
+        
+        Rayfield:Notify({
+            Title = "服务器信息",
+            Content = string.format("玩家人数: %d/%d\n地图ID: %s\n服务器ID: %s", playerCount, maxPlayers, placeId, jobId),
+            Duration = 10,
+        })
+    end,
+})
+
+-- 玩家列表和传送功能
+local PlayerSection = ToolsTab:CreateSection("玩家传送")
+
+-- 存储选中的玩家
+local selectedPlayer = ""
+
+-- 玩家下拉菜单
+local PlayerDropdown = ToolsTab:CreateDropdown({
+    Name = "选择要传送的玩家",
+    Options = {},
+    CurrentOption = "",
+    Flag = "PlayerSelector",
+    Callback = function(Option)
+        selectedPlayer = Option
+        Rayfield:Notify({
+            Title = "玩家选择",
+            Content = "已选择玩家: " .. Option,
+            Duration = 3,
+        })
+    end,
+})
+
+-- 传送按钮
+local TeleportButton = ToolsTab:CreateButton({
+    Name = "传送到选中玩家",
+    Callback = function()
+        if selectedPlayer and selectedPlayer ~= "" then
+            local targetPlayer = game:GetService("Players"):FindFirstChild(selectedPlayer)
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local localPlayer = game.Players.LocalPlayer
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    localPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+                    Rayfield:Notify({
+                        Title = "传送成功",
+                        Content = "已传送到玩家: " .. selectedPlayer,
+                        Duration = 5,
+                    })
+                else
+                    Rayfield:Notify({
+                        Title = "传送失败",
+                        Content = "你的角色未加载完成",
+                        Duration = 3,
+                    })
+                end
+            else
+                Rayfield:Notify({
+                    Title = "传送失败",
+                    Content = "无法找到目标玩家或玩家未加载完成",
+                    Duration = 3,
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "传送失败",
+                Content = "请先选择一个玩家",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 传送到我按钮（让其他玩家传送到自己）
+local TeleportToMeButton = ToolsTab:CreateButton({
+    Name = "让玩家传送到我",
+    Callback = function()
+        if selectedPlayer and selectedPlayer ~= "" then
+            local targetPlayer = game:GetService("Players"):FindFirstChild(selectedPlayer)
+            local localPlayer = game.Players.LocalPlayer
+            
+            if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    targetPlayer.Character.HumanoidRootPart.CFrame = localPlayer.Character.HumanoidRootPart.CFrame
+                    Rayfield:Notify({
+                        Title = "传送成功",
+                        Content = "已将玩家 " .. selectedPlayer .. " 传送到你身边",
+                        Duration = 5,
+                    })
+                else
+                    Rayfield:Notify({
+                        Title = "传送失败",
+                        Content = "你的角色未加载完成",
+                        Duration = 3,
+                    })
+                end
+            else
+                Rayfield:Notify({
+                    Title = "传送失败",
+                    Content = "无法找到目标玩家或玩家未加载完成",
+                    Duration = 3,
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "传送失败",
+                Content = "请先选择一个玩家",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 更新玩家列表函数
+local function updatePlayerList()
+    local players = game:GetService("Players"):GetPlayers()
+    local playerNames = {}
+    
+    for _, player in ipairs(players) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(playerNames, player.Name)
+        end
+    end
+    
+    PlayerDropdown:Refresh(playerNames, true)
+end
+
+-- 玩家加入/离开时更新列表
+game:GetService("Players").PlayerAdded:Connect(updatePlayerList)
+game:GetService("Players").PlayerRemoved:Connect(updatePlayerList)
+
+-- 初始化玩家列表
+updatePlayerList()
+
+-- 重置角色功能
+local ResetSection = ToolsTab:CreateSection("角色控制")
+
+local ResetButton = ToolsTab:CreateButton({
+    Name = "重置角色",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        if player.Character then
+            player.Character:BreakJoints()
+            Rayfield:Notify({
+                Title = "角色重置",
+                Content = "角色已重置",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 重生点传送功能
+local SpawnTPButton = ToolsTab:CreateButton({
+    Name = "传送到重生点",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            -- 寻找重生点
+            local spawnLocation = workspace:FindFirstChild("SpawnLocation") 
+                            or workspace:FindFirstChild("Spawn")
+                            or workspace:FindFirstChild("SpawnPoint")
+            
+            if spawnLocation then
+                character.HumanoidRootPart.CFrame = spawnLocation.CFrame
+                Rayfield:Notify({
+                    Title = "传送成功",
+                    Content = "已传送到重生点",
+                    Duration = 3,
+                })
+            else
+                -- 如果没有找到重生点，尝试传送到地图中心
+                character.HumanoidRootPart.CFrame = CFrame.new(0, 10, 0)
+                Rayfield:Notify({
+                    Title = "传送完成",
+                    Content = "已传送到地图中心",
+                    Duration = 3,
+                })
+            end
+        else
+            Rayfield:Notify({
+                Title = "传送失败",
+                Content = "角色未加载完成",
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+-- 添加设置标签页
+local SettingsTab = Window:CreateTab("设置", 4483362458)
+
+-- 界面设置
+local InterfaceSection = SettingsTab:CreateSection("界面设置")
+
+-- 隐藏界面快捷键
+local HideInterfaceToggle = SettingsTab:CreateKeybind({
+    Name = "隐藏/显示界面",
+    CurrentKeybind = "RightShift",
+    HoldToInteract = false,
+    Flag = "HideInterfaceKeybind",
+    Callback = function(Keybind)
+        Rayfield:Notify({
+            Title = "界面控制",
+            Content = "按 " .. Keybind .. " 可以隐藏/显示界面",
+            Duration = 3,
+        })
+    end,
+})
+
+-- 销毁脚本按钮
+local DestroyScriptButton = SettingsTab:CreateButton({
+    Name = "销毁脚本",
+    Callback = function()
+        Rayfield:Destroy()
+        Rayfield:Notify({
+            Title = "脚本已销毁",
+            Content = "所有功能已关闭，界面已销毁",
+            Duration = 3,
+        })
+    end,
+})
+
+-- 关于信息
+local AboutSection = SettingsTab:CreateSection("关于")
+
+local AboutButton = SettingsTab:CreateButton({
+    Name = "关于脚本",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "关于日奈脚本",
+            Content = "版本: 1.0\n作者: 日奈\nQQ: 112472935\n功能: 移动修改、飞行、传送等",
+            Duration = 10,
+        })
+    end,
+})
