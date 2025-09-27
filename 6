@@ -1,0 +1,316 @@
+-- 创建全屏加载背景
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "日奈_LoadingGui"
+loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+loadingGui.ResetOnSpawn = false
+
+-- 全屏背景框架
+local fullscreenFrame = Instance.new("Frame")
+fullscreenFrame.Size = UDim2.new(1, 0, 1, 0)
+fullscreenFrame.Position = UDim2.new(0, 0, 0, 0)
+fullscreenFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 15)
+fullscreenFrame.BorderSizePixel = 0
+fullscreenFrame.Parent = loadingGui
+
+-- 创建动态星空背景
+local starsContainer = Instance.new("Frame")
+starsContainer.Size = UDim2.new(1, 0, 1, 0)
+starsContainer.BackgroundTransparency = 1
+starsContainer.Parent = fullscreenFrame
+
+local stars = {}
+for i = 1, 150 do
+    local star = Instance.new("Frame")
+    local size = math.random(1, 4)
+    star.Size = UDim2.new(0, size, 0, size)
+    star.Position = UDim2.new(math.random(), 0, math.random(), 0)
+    star.BackgroundColor3 = Color3.fromRGB(math.random(150, 255), math.random(150, 255), math.random(150, 255))
+    star.BorderSizePixel = 0
+    star.Parent = starsContainer
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0)
+    corner.Parent = star
+    
+    stars[i] = {
+        object = star,
+        speed = math.random(10, 30) / 100,
+        direction = Vector2.new(math.random() * 2 - 1, math.random() * 2 - 1),
+        blinkSpeed = math.random(5, 20) / 10,
+        originalSize = size,
+        timeOffset = math.random() * math.pi * 2
+    }
+end
+
+-- 星星动画
+local function animateStars()
+    while true do
+        local time = tick()
+        for i, starData in pairs(stars) do
+            local star = starData.object
+            local currentTime = time + starData.timeOffset
+            
+            local alpha = (math.sin(currentTime * starData.blinkSpeed) + 1) / 2
+            star.BackgroundTransparency = 0.3 + (0.7 * alpha)
+            
+            local sizeScale = 0.8 + (0.4 * math.sin(currentTime * starData.blinkSpeed * 0.5))
+            star.Size = UDim2.new(0, starData.originalSize * sizeScale, 0, starData.originalSize * sizeScale)
+            
+            local currentPos = star.Position
+            local newX = (currentPos.X.Scale + starData.direction.X * starData.speed / 1000) % 1
+            local newY = (currentPos.Y.Scale + starData.direction.Y * starData.speed / 1000) % 1
+            star.Position = UDim2.new(newX, 0, newY, 0)
+        end
+        wait(0.03)
+    end
+end
+
+coroutine.wrap(animateStars)()
+
+-- 中央加载面板
+local centerPanel = Instance.new("Frame")
+centerPanel.Size = UDim2.new(0, 400, 0, 300)
+centerPanel.Position = UDim2.new(0.5, -200, 0.5, -150)
+centerPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+centerPanel.BackgroundTransparency = 0.3
+centerPanel.BorderSizePixel = 0
+centerPanel.Parent = fullscreenFrame
+
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 15)
+panelCorner.Parent = centerPanel
+
+-- 界面元素
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 80)
+titleLabel.Position = UDim2.new(0, 0, 0, 20)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "✨ 日奈 ✨"
+titleLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
+titleLabel.TextSize = 36
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = centerPanel
+
+local progressBarBg = Instance.new("Frame")
+progressBarBg.Size = UDim2.new(0.8, 0, 0, 20)
+progressBarBg.Position = UDim2.new(0.1, 0, 0.5, 0)
+progressBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+progressBarBg.BorderSizePixel = 0
+progressBarBg.Parent = centerPanel
+
+local progressBarCorner = Instance.new("UICorner")
+progressBarCorner.CornerRadius = UDim.new(0, 10)
+progressBarCorner.Parent = progressBarBg
+
+local progressFill = Instance.new("Frame")
+progressFill.Size = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+progressFill.BorderSizePixel = 0
+progressBarBg.ClipsDescendants = true
+progressFill.Parent = progressBarBg
+
+local progressFillCorner = Instance.new("UICorner")
+progressFillCorner.CornerRadius = UDim.new(0, 10)
+progressFillCorner.Parent = progressFill
+
+local percentLabel = Instance.new("TextLabel")
+percentLabel.Size = UDim2.new(1, 0, 0, 30)
+percentLabel.Position = UDim2.new(0, 0, 0.4, 0)
+percentLabel.BackgroundTransparency = 1
+percentLabel.Text = "0%"
+percentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+percentLabel.TextSize = 24
+percentLabel.Font = Enum.Font.GothamBold
+percentLabel.Parent = centerPanel
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0.6, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "正在初始化..."
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+statusLabel.TextSize = 16
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = centerPanel
+
+-- 更新进度函数
+local function updateProgress(progress, status)
+    progressFill.Size = UDim2.new(progress, 0, 1, 0)
+    percentLabel.Text = math.floor(progress * 100) .. "%"
+    statusLabel.Text = status
+    wait(0.1)
+end
+
+-- 主加载函数
+local function loadScript()
+    updateProgress(0.1, "正在加载Rayfield库...")
+    
+    -- 加载Rayfield库
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    
+    updateProgress(0.3, "正在初始化窗口...")
+    
+    -- 创建窗口
+    local Window = Rayfield:CreateWindow({
+        Name = "日奈 - 星空脚本",
+        LoadingTitle = "加载中...",
+        LoadingSubtitle = "正在初始化功能",
+        ConfigurationSaving = {Enabled = true, FileName = "日奈配置"},
+        KeySystem = false,
+    })
+    
+    updateProgress(0.5, "正在创建功能界面...")
+    
+    -- 创建主标签页
+    local MainTab = Window:CreateTab("主页面", 4483362458)
+    
+    -- 移动功能分区
+    local MovementSection = MainTab:CreateSection("移动功能")
+    
+    updateProgress(0.6, "添加移动速度控制...")
+    
+    -- 移动速度滑块
+    local WalkSpeedSlider = MainTab:CreateSlider({
+        Name = "移动速度",
+        Range = {0, 100},
+        Increment = 1,
+        Suffix = "速度值",
+        CurrentValue = 16,
+        Flag = "WalkSpeed",
+        Callback = function(Value)
+            local player = game.Players.LocalPlayer
+            if player.Character then
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = Value
+                end
+            end
+        end,
+    })
+    
+    updateProgress(0.7, "添加跳跃高度控制...")
+    
+    -- 跳跃高度滑块
+    local JumpPowerSlider = MainTab:CreateSlider({
+        Name = "跳跃高度",
+        Range = {0, 100},
+        Increment = 1,
+        Suffix = "高度值",
+        CurrentValue = 50,
+        Flag = "JumpPower",
+        Callback = function(Value)
+            local player = game.Players.LocalPlayer
+            if player.Character then
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.JumpPower = Value
+                end
+            end
+        end,
+    })
+    
+    updateProgress(0.8, "添加飞行脚本...")
+    
+    -- 飞行脚本按钮
+    local FlyButton = MainTab:CreateButton({
+        Name = "加载飞行脚本",
+        Callback = function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+        end,
+    })
+    
+    -- 穿墙功能
+    local noclipEnabled = false
+    local noclipConnection
+    
+    local NoClipToggle = MainTab:CreateToggle({
+        Name = "穿墙模式",
+        CurrentValue = false,
+        Flag = "NoClip",
+        Callback = function(Value)
+            noclipEnabled = Value
+            local character = game.Players.LocalPlayer.Character
+            if character then
+                if noclipEnabled then
+                    noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                        for _, part in pairs(character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
+                            end
+                        end
+                    end)
+                else
+                    if noclipConnection then
+                        noclipConnection:Disconnect()
+                    end
+                end
+            end
+        end,
+    })
+    
+    updateProgress(0.9, "创建工具页面...")
+    
+    -- 工具标签页
+    local ToolsTab = Window:CreateTab("工具", 4483362458)
+    
+    -- 传送功能
+    local TeleportSection = ToolsTab:CreateSection("传送功能")
+    
+    local selectedPlayer = ""
+    local PlayerDropdown = ToolsTab:CreateDropdown({
+        Name = "选择玩家",
+        Options = {},
+        CurrentOption = "",
+        Flag = "PlayerSelector",
+        Callback = function(Option) selectedPlayer = Option end,
+    })
+    
+    local TeleportButton = ToolsTab:CreateButton({
+        Name = "传送到玩家",
+        Callback = function()
+            if selectedPlayer ~= "" then
+                local target = game:GetService("Players"):FindFirstChild(selectedPlayer)
+                if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+                end
+            end
+        end,
+    })
+    
+    -- 更新玩家列表函数
+    local function updatePlayerList()
+        local players = game:GetService("Players"):GetPlayers()
+        local playerNames = {}
+        for _, player in ipairs(players) do
+            if player ~= game.Players.LocalPlayer then
+                table.insert(playerNames, player.Name)
+            end
+        end
+        PlayerDropdown:Refresh(playerNames, true)
+    end
+    updatePlayerList()
+    
+    updateProgress(1.0, "加载完成！")
+    
+    -- 延迟后关闭加载界面
+    wait(2)
+    
+    -- 淡出效果
+    for i = 1, 20 do
+        centerPanel.BackgroundTransparency = i * 0.05 + 0.3
+        fullscreenFrame.BackgroundTransparency = i * 0.05
+        wait(0.05)
+    end
+    
+    loadingGui:Destroy()
+    
+    -- 显示完成通知
+    Rayfield:Notify({
+        Title = "日奈脚本加载完成",
+        Content = "所有功能已就绪！",
+        Duration = 5,
+    })
+end
+
+-- 开始加载
+coroutine.wrap(loadScript)()
