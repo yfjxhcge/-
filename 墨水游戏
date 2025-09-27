@@ -1,0 +1,164 @@
+-- 创建UI界面
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RangeAttackUI"
+ScreenGui.Parent = game.Players.LocalPlayer.PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 200, 0, 150)
+MainFrame.Position = UDim2.new(0.05, 0, 0.5, -75)
+MainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.new(0.8, 0.8, 0.8)
+MainFrame.Parent = ScreenGui
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+TitleLabel.Text = "大范围攻击系统"
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.TextScaled = true
+TitleLabel.Parent = MainFrame
+
+local RangeLabel = Instance.new("TextLabel")
+RangeLabel.Name = "RangeLabel"
+RangeLabel.Size = UDim2.new(1, 0, 0, 20)
+RangeLabel.Position = UDim2.new(0, 0, 0, 40)
+RangeLabel.BackgroundTransparency = 1
+RangeLabel.Text = "攻击范围: 500"
+RangeLabel.TextColor3 = Color3.new(1, 1, 1)
+RangeLabel.Parent = MainFrame
+
+local AttackButton = Instance.new("TextButton")
+AttackButton.Name = "AttackButton"
+AttackButton.Size = UDim2.new(0.8, 0, 0, 30)
+AttackButton.Position = UDim2.new(0.1, 0, 0, 100)
+AttackButton.BackgroundColor3 = Color3.new(0.5, 0, 0)
+AttackButton.Text = "大范围攻击 (Q键)"
+AttackButton.TextColor3 = Color3.new(1, 1, 1)
+AttackButton.Parent = MainFrame
+
+-- 功能逻辑部分
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local attackRange = 500 -- 攻击范围设置为500
+
+-- 创建远程事件（如果不存在）
+local function createRemoteEvents()
+    if not ReplicatedStorage:FindFirstChild("RangeAttackEvent") then
+        local rangeEvent = Instance.new("RemoteEvent")
+        rangeEvent.Name = "RangeAttackEvent"
+        rangeEvent.Parent = ReplicatedStorage
+    end
+    if not ReplicatedStorage:FindFirstChild("AttackEffectEvent") then
+        local effectEvent = Instance.new("RemoteEvent")
+        effectEvent.Name = "AttackEffectEvent"
+        effectEvent.Parent = ReplicatedStorage
+    end
+end
+createRemoteEvents()
+
+local rangeAttackEvent = ReplicatedStorage:WaitForChild("RangeAttackEvent")
+local attackEffectEvent = ReplicatedStorage:WaitForChild("AttackEffectEvent")
+
+-- 优化大范围内的目标检测（只检测玩家角色）
+local function getPlayersInRange(center, range)
+    local targets = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character then
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                if rootPart then
+                    local distance = (rootPart.Position - center).Magnitude
+                    if distance <= range then
+                        table.insert(targets, character)
+                    end
+                end
+            end
+        end
+    end
+    return targets
+end
+
+-- 攻击触发函数
+local function triggerRangeAttack()
+    local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- 获取500范围内的玩家目标
+    local targets = getPlayersInRange(humanoidRootPart.Position, attackRange)
+    if #targets > 0 then
+        rangeAttackEvent:FireServer(targets)
+    else
+        warn("500范围内没有其他玩家")
+    end
+end
+
+-- 按钮触发攻击
+AttackButton.MouseButton1Click:Connect(triggerRangeAttack)
+
+-- 键盘Q键触发攻击
+UserInputService.InputBegan:Connect(function(input, isTyping)
+    if not isTyping and input.KeyCode == Enum.KeyCode.Q then
+        triggerRangeAttack()
+    end
+end)
+
+-- 服务器端处理
+if RunService:IsServer() then
+    rangeAttackEvent.OnServerEvent:Connect(function(playerWhoAttacked, targetCharacters)
+        for _, targetCharacter in pairs(targetCharacters) do
+            local targetHumanoid = targetCharacter:FindFirstChild("Humanoid")
+            if targetHumanoid and targetHumanoid.Health > 0 then
+                targetHumanoid:TakeDamage(30) -- 大范围内可适当提高伤害
+            end
+        end
+        attackEffectEvent:FireAllClients(targetCharacters, playerWhoAttacked.Character)
+    end)
+end
+
+-- 客户端攻击效果（适配大范围显示）
+attackEffectEvent.OnClientEvent:Connect(function(targetCharacters, attackerCharacter)
+    if not attackerCharacter or not attackerCharacter:FindFirstChild("HumanoidRootPart") then return end
+    
+    -- 创建大范围攻击指示器（使用球形粒子效果替代实体部件，避免性能问题）
+    local particleEmitter = Instance.new("ParticleEmitter")
+    particleEmitter.Name = "LargeRangeIndicator"
+    particleEmitter.Texture = "rbxassetid://10807214671" -- 圆形粒子纹理
+    particleEmitter.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(0.5, attackRange / 5), -- 粒子大小适配范围
+        NumberSequenceKeypoint.new(1, 0)
+    })
+    particleEmitter.Speed = NumberRange.new(100, 200)
+    particleEmitter.Lifetime = NumberRange.new(1, 1.5)
+    particleEmitter.Rate = 500
+    particleEmitter.SpreadAngle = Vector2.new(180, 180)
+    particleEmitter.EmissionDirection = Enum.NormalId.Top
+    particleEmitter.Parent = attackerCharacter.HumanoidRootPart
+    
+    -- 播放效果后清理
+    task.wait(1.5)
+    particleEmitter:Destroy()
+    
+    -- 目标受击效果
+    for _, target in pairs(targetCharacters) do
+        local humanoidRootPart = target:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            local sparkles = Instance.new("Sparkles")
+            sparkles.Parent = humanoidRootPart
+            task.wait(0.7)
+            sparkles:Destroy()
+        end
+    end
+end)
+
+print("大范围攻击UI已加载，范围500，按Q键或点击按钮使用")
