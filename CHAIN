@@ -1,5 +1,3 @@
-the key is : vms 
-
 local Rayfield = loadstring(game:HttpGet('http://sirius.menu/rayfield'))()
 
 local function SetupNotificationSystem(Window)
