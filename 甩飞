@@ -1,0 +1,86 @@
+local SG = Instance.new("ScreenGui", game.CoreGui)
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local FRAME = Instance.new("Frame", SG)
+FRAME.Size = UDim2.new(0, 220, 0, 180)
+FRAME.Position = UDim2.new(0.05, 0, 0.15, 0)
+FRAME.BackgroundColor3 = Color3.new(0.1, 0.1, 0.15)
+FRAME.BackgroundTransparency = 0.2
+FRAME.BorderSizePixel = 0
+FRAME.Active = true
+FRAME.Draggable = true
+
+local BORDER = Instance.new("UIStroke", FRAME)
+BORDER.Color = Color3.new(0, 0.8, 1)
+BORDER.Transparency = 0.3
+BORDER.Thickness = 2
+BORDER.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local EFFECT = Instance.new("UIGradient", FRAME)
+EFFECT.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.new(0.2, 0.25, 0.35)),
+    ColorSequenceKeypoint.new(1, Color3.new(0.15, 0.2, 0.25))
+})
+EFFECT.Transparency = NumberSequence.new(0.3)
+
+local TITLE = Instance.new("TextLabel", FRAME)
+TITLE.Size = UDim2.new(1, 0, 0, 30)
+TITLE.BackgroundColor3 = Color3.new(0, 0.2, 0.4)
+TITLE.BackgroundTransparency = 0.5
+TITLE.Text = "SYSTEM PANEL [FLY MODE]"
+TITLE.TextColor3 = Color3.new(0, 1, 1)
+TITLE.TextSize = 14
+TITLE.Font = Enum.Font.Code
+
+local BTN = Instance.new("TextButton", FRAME)
+BTN.Size = UDim2.new(0, 180, 0, 40)
+BTN.Position = UDim2.new(0.5, -90, 0.55, 0)
+BTN.BackgroundColor3 = Color3.new(0, 0.6, 1)
+BTN.BackgroundTransparency = 0.3
+BTN.Text = "FLY OFF"
+BTN.TextColor3 = Color3.new(1, 1, 1)
+BTN.TextSize = 16
+BTN.Font = Enum.Font.SourceSansSemibold
+
+local BTN_BORDER = Instance.new("UIStroke", BTN)
+BTN_BORDER.Color = Color3.new(0, 1, 1)
+BTN_BORDER.Transparency = 0.2
+BTN_BORDER.Thickness = 1.5
+
+local function TWEEN(obj, prop, val, time)
+    game:GetService("TweenService"):Create(obj, TweenInfo.new(time), {[prop] = val}):Play()
+end
+
+BTN.MouseButton1Click:Connect(function()
+    Enabled = not Enabled
+    BTN.Text = Enabled and "FLY ON" or "FLY OFF"
+
+    TWEEN(BTN, "BackgroundColor3", Enabled and Color3.new(0,1,0.4) or Color3.new(0,0.6,1), 0.15)
+    TWEEN(BTN_BORDER, "Transparency", Enabled and 0 or 0.2, 0.15)
+
+    if not Enabled then
+        targetPlayer = nil
+        originalCFrame = nil
+    end
+end)
+
+local dragging, dragStart, startPos
+FRAME.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = FRAME.Position
+    end
+end)
+
+FRAME.InputChanged:Connect(function(input)
+    if dragging then
+        local delta = input.Position - dragStart
+        FRAME.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+FRAME.InputEnded:Connect(function(input)
+    dragging = false
+end)
