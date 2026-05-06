@@ -1,0 +1,372 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    HumanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    Humanoid = newCharacter:WaitForChild("Humanoid")
+end)
+
+local function loadRemoteScript(url)
+    pcall(function()
+        loadstring(game:HttpGet(url))()
+    end)
+end
+
+-- ESP 线条存储
+local espLines = {}
+
+local function setupEspForPlayer(player)
+    if player == LocalPlayer then return end
+    local function ensure()
+        if not player.Character then return end
+        local head = player.Character:FindFirstChild("Head")
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if not head or not root then return end
+        if not espLines[player.UserId] then
+            local line = Drawing.new("Line")
+            line.Color = Color3.new(1, 0, 0)
+            line.Thickness = 2
+            line.Transparency = 0.8
+            line.Visible = true
+            espLines[player.UserId] = line
+        end
+        local line = espLines[player.UserId]
+        RunService.RenderStepped:Connect(function()
+            if not player.Character or not line then return end
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            local head = player.Character:FindFirstChild("Head")
+            if root and head then
+                local rootScreenPos, rootOnScreen = Camera:WorldToViewportPoint(root.Position)
+                local headScreenPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+                if rootOnScreen and headOnScreen then
+                    line.From = Vector2.new(headScreenPos.X, headScreenPos.Y)
+                    line.To = Vector2.new(rootScreenPos.X, rootScreenPos.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            end
+        end)
+    end
+    if player.Character then
+        ensure()
+    else
+        player.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            ensure()
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        setupEspForPlayer(player)
+    end
+end)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        setupEspForPlayer(player)
+    end
+end
+
+local Window = WindUI:CreateWindow({
+    SideBarWidth = 200,
+    Author = "rannbsn",
+    IconThemed = true,
+    Folder = "XiaoRanHub",
+    Title = "小然Hub",
+    Transparent = true,
+    ScrollBarEnabled = true,
+    Theme = "Dark",
+    Icon = "rbxassetid://129260712070622",
+    Size = UDim2.fromOffset(580, 750)
+})
+
+Window:CreateTopbarButton("刷新", "refresh-ccw", function()
+    WindUI:Notify({
+        Duration = 2,
+        Title = "刷新",
+        Content = "已重新加载脚本"
+    })
+end, 990)
+
+Window:CreateTopbarButton("帮助", "question-circle", function()
+    Window:Dialog({
+        Content = "按 H 隐藏/显示界面",
+        Title = "使用帮助",
+        Buttons = {{ Title = "知道了", Variant = "Primary" }}
+    })
+end, 989)
+
+Window:EditOpenButton({
+    StrokeThickness = 2,
+    Title = "小然Hub",
+    Color = ColorSequence.new(Color3.fromHex("FF6B6B"), Color3.fromHex("4ECDC4")),
+    Draggable = true,
+    Icon = "box",
+    CornerRadius = UDim.new(0, 16)
+})
+
+local BattleTab = Window:Tab({
+    Title = "战斗",
+    Icon = "sword"
+})
+
+BattleTab:Paragraph({
+    Image = "sword",
+    Title = "战斗功能",
+    Color = "Red",
+    ImageSize = 40,
+    Desc = "点击按钮执行对应功能脚本"
+})
+
+BattleTab:Button({
+    Title = "虚空传送",
+    Variant = "Primary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/FL6PAg7Y")
+        WindUI:Notify({ Duration = 1.5, Title = "虚空传送", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "强锁追踪",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/jfNm6XvA")
+        WindUI:Notify({ Duration = 1.5, Title = "强锁追踪", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "飞天",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://raw.githubusercontent.com/Administration1boo/solid-octo-succotash/refs/heads/main/Akbarshox%20Fly%20V3%E2%9A%A1")
+        WindUI:Notify({ Duration = 1.5, Title = "飞天", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "锁人",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/wf2J2AxQ")
+        WindUI:Notify({ Duration = 1.5, Title = "锁人", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "新功能",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/KCFizBq3")
+        WindUI:Notify({ Duration = 1.5, Title = "新功能", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "打全图",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/63AP7sSE")
+        WindUI:Notify({ Duration = 1.5, Title = "打全图", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "旋转转转转转",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/VhbuDsQy")
+        WindUI:Notify({ Duration = 1.5, Title = "旋转转转转转", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "旋转视角",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/7yHYbixa")
+        WindUI:Notify({ Duration = 1.5, Title = "旋转视角", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "防返回脚本",
+    Variant = "Secondary",
+    Callback = function()
+        loadRemoteScript("https://pastebin.com/raw/yP8Ufrz3")
+        WindUI:Notify({ Duration = 1.5, Title = "防返回脚本", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "胀相",
+    Variant = "Secondary",
+    Callback = function()
+        local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+        gui.Name = "DeathFlingGUI"
+        gui.ResetOnSpawn = false
+
+        local frame = Instance.new("Frame", gui)
+        frame.Size = UDim2.new(0, 150, 0, 50)
+        frame.Position = UDim2.new(0, 10, 0, 10)
+        frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.15)
+        frame.BackgroundTransparency = 0.1
+        frame.Active = true
+        frame.Draggable = true
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+        local closeBtn = Instance.new("TextButton", frame)
+        closeBtn.Size = UDim2.new(0, 20, 0, 20)
+        closeBtn.Position = UDim2.new(1, -25, 0, 5)
+        closeBtn.Text = "X"
+        closeBtn.TextColor3 = Color3.new(1, 1, 1)
+        closeBtn.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+        closeBtn.Font = Enum.Font.GothamBold
+        closeBtn.TextSize = 14
+        Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
+
+        local toggleBtn = Instance.new("TextButton", frame)
+        toggleBtn.Size = UDim2.new(1, -35, 1, -10)
+        toggleBtn.Position = UDim2.new(0, 5, 0, 5)
+        toggleBtn.Text = "胀相 [OFF]"
+        toggleBtn.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+        toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+        toggleBtn.Font = Enum.Font.GothamBold
+        toggleBtn.TextSize = 13
+        Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0, 6)
+
+        local enabled = false
+        local connection
+
+        closeBtn.MouseButton1Click:Connect(function()
+            if connection then connection:Disconnect() end
+            gui:Destroy()
+        end)
+
+        toggleBtn.MouseButton1Click:Connect(function()
+            enabled = not enabled
+            if enabled then
+                toggleBtn.Text = "胀相 [ON]"
+                toggleBtn.BackgroundColor3 = Color3.new(0.2, 0.7, 0.2)
+                connection = RunService.Heartbeat:Connect(function()
+                    if enabled and Character and Humanoid then
+                        sethiddenproperty(Humanoid, "MoveDirectionInternal", Vector3.new(0/0, 0/0, 0/0))
+                    end
+                end)
+            else
+                toggleBtn.Text = "胀相 [OFF]"
+                toggleBtn.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+                if connection then
+                    connection:Disconnect()
+                    connection = nil
+                end
+            end
+        end)
+
+        WindUI:Notify({ Duration = 1.5, Title = "胀相", Content = "已执行" })
+    end
+})
+
+BattleTab:Button({
+    Title = "真人秒杀",
+    Variant = "Secondary",
+    Callback = function()
+        local gui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+        gui.Name = "RealKillGUI"
+
+        local frame = Instance.new("Frame", gui)
+        frame.Size = UDim2.new(0, 280, 0, 290)
+        frame.Position = UDim2.new(0.02, 0, 0.3, 0)
+        frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+        frame.BackgroundTransparency = 0.1
+        frame.Active = true
+        frame.Draggable = true
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 15)
+
+        local titleBar = Instance.new("Frame", frame)
+        titleBar.Size = UDim2.new(1, 0, 0, 35)
+        titleBar.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+        Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 15)
+
+        local titleLabel = Instance.new("TextLabel", titleBar)
+        titleLabel.Size = UDim2.new(1, -60, 1, 0)
+        titleLabel.Position = UDim2.new(0, 10, 0, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "真人秒杀", Content = "已执行" })
+    end
+})
+
+BattleTab:Toggle({
+    Title = "穿墙功能",
+    Desc = "开启后可以穿过墙壁",
+    Value = false,
+    Callback = function(state)
+        local conn
+        if state then
+            conn = RunService.Stepped:Connect(function()
+                if Character then
+                    for _, part in ipairs(Character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            if conn then conn:Disconnect() end
+            if Character then
+                for _, part in ipairs(Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+        end
+        WindUI:Notify({ Duration = 1.5, Title = "穿墙功能", Content = state and "已开启" or "已关闭" })
+    end
+})
+
+BattleTab:Toggle({
+    Title = "ESP透视",
+    Desc = "显示玩家名字、距离、血量、方框",
+    Value = false,
+    Callback = function(state)
+        for _, line in pairs(espLines) do
+            line.Visible = state
+        end
+    end
+})
+
+Window:OnClose(function()
+    print("小冉Hub已关闭")
+end)
+
+WindUI:Notify({
+    Duration = 3,
+    Title = "小冉Hub",
+    Content = "加载完成 | 按 H 隐藏/显示界面"
+})
+
+print("================================")
+print("小冉Hub")
+print("战斗功能: 虚空传送 / 强锁追踪 / 飞行 / 子弹 / 新功能 / 打全图 / 旋转转转转转 / 旋转视角 / 防返回脚本 / 胀相 / 真人秒杀 / 穿墙功能 / ESP")
+print("按 H 隐藏/显示界面")
+print("================================")
+
+return { Window = Window }
+    
