@@ -1,0 +1,236 @@
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+
+-- script create BY ghost
+
+-- Deleta objetos específicos ao iniciar o script
+workspace.Map.AntiHack:Destroy() 
+game.Players.LocalPlayer.Character.StayOnPart:Destroy()
+game.Players.LocalPlayer.Character.HumanoidInit:Destroy()
+
+-- O restante do seu código
+-- Aqui começa o seu script scorpy
+
+
+local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
+
+local window = DrRayLibrary:Load("Smile GUI : Beta Hehehe", "Default")
+
+local tab1 = DrRayLibrary.newTab("humanos", "rbxassetid://1129583422")
+
+local gettablesarray = newcclosure(function(...)
+    local result = {} 
+    for _, tbl in ipairs({...}) do
+        if type(tbl) == "table" then
+            for _, value in ipairs(tbl) do
+                table.insert(result, value)
+            end
+        end
+    end
+    return result
+end)
+
+coroutine.wrap(function()
+  getgenv().isnetworkowner = newcclosure(function(part)
+    return (part.Anchored == false and part.ReceiveAge == 0 and gethiddenproperty(part, "NetworkIsSleeping") == false)
+  end)
+  
+  getgenv().setsimulationradius = newcclosure(function(min, max)
+    sethiddenproperty(game.Players.LocalPlayer, "SimulationRadius", min)
+    sethiddenproperty(game.Players.LocalPlayer, "MaxSimulationRadius", max)
+    sethiddenproperty(game.Players.LocalPlayer, "MaximumSimulationRadius", max)
+  end)
+  
+  getgenv().getsimulationradius = newcclosure(function()
+    return gethiddienproperty(game.Players.LocalPlayer, "SimulationRadius"), gethiddienproperty(game.Players.LocalPlayer, "MaxSimulationRadius")
+  end)
+end)()
+
+local LabelName = Instance.new("TextLabel", game.CoreGui.DrRay.TopBar.TopBarClose)
+LabelName.Text = [[Moded Oficial Hehehe)]]
+LabelName.Size = UDim2.new(0.4, 0, 0.2, 0)
+LabelName.Position = UDim2.new(0.2, 0, 1, 0)
+LabelName.BackgroundTransparency = 1
+LabelName.TextColor3 = Color3.new(1, 1, 1)
+LabelName.TextSize = LabelName.TextSize / 2
+
+tab1.newDropdown("Fast weapon", "Makes your equipment faster", {"Bat", "Bottle", "Katana", "Branch", "Spare", "Chain"}, function(selectedOption)
+   for _, tool in next, gettablesarray(game.Players.LocalPlayer.Character:GetChildren(), game.Players.LocalPlayer.Backpack:GetChildren()) do
+      if tool:IsA("Tool") and tool.Name == selectedOption then
+         tool.Cooldown.Value = 0
+      end
+   end
+end)
+
+tab1.newToggle("Auto fast weapons", "I think the name makes it clear what it does", false, function(togleir)
+ udb = togleir
+  while udb and task.wait() do
+    if Workspace:FindFirstChild(game.Players.LocalPlayer.Name) then
+      local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+      if tool and tool:FindFirstChild("Cooldown") then
+        tool.Cooldown.Value = 0
+      end
+    end
+  end
+end)
+
+tab1.newToggle("Auto fast weapons fake legit", "I think the name makes it clear what it does", false, function(togleir)
+ udb = togleir
+  while udb and task.wait() do
+    if Workspace:FindFirstChild(game.Players.LocalPlayer.Name) then
+      local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+      if tool and tool:FindFirstChild("Cooldown") then
+        tool.Cooldown.Value = 0.5
+      end
+    end
+  end
+end)
+
+tab1.newToggle("Disable killbricks", "Makes untouchable all part that instantly kill you", false, function(toggleState)
+   for _, part in next, game.Workspace.Map:GetDescendants() do
+      if part:IsA("BasePart") and part:FindFirstChild("TouchInterest") and string.find(part.Name, "Kill") then
+         part.CanTouch = not toggleState
+         part.CanQuery = not toggleState
+      end
+   end
+end)
+
+tab1.newLabel("weapons")
+
+local savedreach = 0
+tab1.newInput("Reach all weapons", "Reset to turn it off", function(text)
+savedreach = text
+for _, tool in next, gettablesarray(game.Players.LocalPlayer.Character:GetChildren(), game.Players.LocalPlayer.Backpack:GetChildren()) do
+  if tool:IsA("Tool") then
+   for _, part in next, tool:GetDescendants() do
+     if part:IsA("BasePart") and part:FindFirstChild("TouchInterest") then
+local sel = Instance.new("SelectionBox", part)
+sel.Adornee = part
+part.Transparency = 1
+part.Massless = true
+part.Size = Vector3.new(text, text, text)
+    end
+   end
+  end
+ end 
+end)
+
+tab1.newToggle("Auto reach weapons", "When you receive a weapon, it is immediately subject to reach (depends on the last weapon you inserted in Reach All Weapons)", false, function(togl)
+local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+char.DescendantAdded:Connect(function(tool)
+if tool:IsA("Tool") and togl then
+for _, part in next, tool:GetDescendants() do
+if part:IsA("BasePart") and part:FindFirstChild("TouchInterest") then
+local sel = Instance.new("SelectionBox", part)
+sel.Adornee = part
+part.Transparency = 1
+part.Massless = true
+part.Size = Vector3.new(savedreach, savedreach, savedreach)
+end
+end
+end
+end)
+end)
+
+tab1.newButton("Get main weapon", "Gives weapons", function()
+local last_pick_sin_mrazy, bac = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame, game.Players.LocalPlayer.Backpack
+  
+  repeat task.wait()
+    local toolname = (game.Players.LocalPlayer.Marketplace["Main Weapon"].Equipped.Value == "Default" and "Bat" or game.Players.LocalPlayer.Marketplace["Main Weapon"].Equipped.Value)
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Workspace.Map.HumanBase.Vendor.BatCollection.HitBox.CFrame
+    game.Workspace.Map.HumanBase.Vendor.BatCollection.ClickDetector.MaxActivationDistance = math.huge
+    fireclickdetector(game.Workspace.Map.HumanBase.Vendor.BatCollection.ClickDetector)
+  until bac:FindFirstChild(toolname) task.wait()
+ repeat task.wait() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = last_pick_sin_mrazy until game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame == last_pick_sin_mrazy
+end)
+
+tab1.newButton("Get all special weapons", "Gives all special weapons for example shotgun. Cannot get locked guns", function()
+ for _, gun in next, Workspace.Map.System:GetDescendants() do
+  if gun:IsA("ClickDetector") and table.find({"FirePotionCollection", "ShotgunCollection", "KnifeCollection", "HatchetCollection", "RustyShovelCollection", "WaterJugCollection", "HandgunCollection", "ShovelCollection"}, gun.Parent.Name) and not gun.Parent:FindFirstAncestor("Locker") then
+    local name, pos, past = table.concat(string.split(string.gsub(gun.Parent.Name, "Collection", ""), "%l"), " "), game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame, tick()
+    repeat task.wait()
+       game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.Parent:FindFirstChildWhichIsA("BasePart").CFrame
+      fireclickdetector(gun)
+    until game.Players.LocalPlayer.Backpack:FindFirstChild(name) or tick() - past >= 0.75 task.wait()
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+  end
+ end
+end)
+
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Função para atualizar armas disponíveis
+local function GetWeaponList()
+    local weapons = {}
+    for _, gun in next, Workspace.Map.System:GetDescendants() do
+        if gun:IsA("ClickDetector") and table.find({
+            "FirePotionCollection",
+            "ShotgunCollection",
+            "KnifeCollection",
+            "HatchetCollection",
+            "RustyShovelCollection",
+            "WaterJugCollection",
+            "HandgunCollection",
+            "ShovelCollection"
+        }, gun.Parent.Name) and not gun.Parent:FindFirstAncestor("Locker") then
+            local name = table.concat(string.split(string.gsub(gun.Parent.Name, "Collection", ""), "%l"), " ")
+            if not table.find(weapons, name) then
+                table.insert(weapons, name)
+            end
+        end
+    end
+    return weapons
+end
+
+-- Função para coletar armas
+local function CollectWeapon(selected)
+    for _, gun in next, Workspace.Map.System:GetDescendants() do
+        if gun:IsA("ClickDetector") and string.find(gun.Parent.Name, string.gsub(selected, " ", "")) then
+            local name = selected
+            local pos = LocalPlayer.Character.HumanoidRootPart.CFrame
+            local past = tick()
+            repeat task.wait()
+                LocalPlayer.Character.HumanoidRootPart.CFrame = gun.Parent:FindFirstChildWhichIsA("BasePart").CFrame
+                fireclickdetector(gun)
+            until LocalPlayer.Backpack:FindFirstChild(name) or tick() - past >= 0.75
+            task.wait()
+            LocalPlayer.Character.HumanoidRootPart.CFrame = pos
+            break
+        end
+    end
+end
+
+-- Criação do DropDown fixo (não atualiza)
+local list = GetWeaponList()
+tab1.newDropdown("Weapon  Picker", "Selecione e pegue a arma", list, function(selected)
+    CollectWeapon(selected)
+end)
+
+tab1.newButton("Delete tool", "Removes tool in hand", function()
+   game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool"):Destroy()
+end)
+
+local tab1 = DrRayLibrary.newTab("infectados", "rbxassetid://1129583422")
+
+tab1.newButton("Infect", "Infects you", function()
+    firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, workspace.Map.Infectors.Infector.Part, 0)
+end)
+
+tab1.newInput("Reach hitbox", "Increases the distance from which you can grab a player", function(num)
+  local hitbox = Instance.new("SelectionBox", game.Players.LocalPlayer.Character.Torso.Part)
+  hitbox.Adornee = game.Players.LocalPlayer.Character.Torso.Part
+  
+  game.Players.LocalPlayer.Character.Torso.Part.Massless = true
+  game.Players.LocalPlayer.Character.Torso.Part.Size = Vector3.new(7, 2, num)
+end)
+
+
+
+local toggleAntiSmilers = false
+local toggleInfectSmilers = false
+
+ta
