@@ -1,0 +1,204 @@
+-- ============================================
+-- THE WRAITH: SURVIVAL 杀戮光环脚本
+-- 带防检测优化
+-- ============================================
+
+-- 【设置区】自己调参数
+local Settings = {
+    Enabled = true,            -- 光环开关
+    Range = 15,                -- 光环范围（studs），建议 10~20
+    Damage = 10,               -- 每次伤害（别太高！）
+    AttackSpeed = 0.5,         -- 攻击间隔（秒），建议 0.3~1.0
+    RandomDelay = true,        -- 随机延迟（防检测）
+    MinDelay = 0.3,            -- 最小延迟
+    MaxDelay = 0.8,            -- 最大延迟
+    OnlyVisible = true,        -- 只打看得见的（不穿墙）
+    HitMode = "Touch",         -- 攻击方式: "Touch" 触碰伤害 / "Remote" 远程事件
+    ToggleKey = Enum.KeyCode.R,-- 开关快捷键
+}
+
+-- ============================================
+-- 核心代码
+-- ============================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local lastAttackTime = 0
+local nextAttackDelay = Settings.AttackSpeed
+
+-- 获取玩家位置
+local function getMyPosition()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    return root.Position
+end
+
+-- 检查是否可见（穿墙检测）
+local function isVisible(targetPart)
+    if not Settings.OnlyVisible then return true end
+    
+    local myPos = getMyPosition()
+    if not myPos then return false end
+    
+    local direction = (targetPart.Position - myPos).Unit
+    local distance = (targetPart.Position - myPos).Magnitude
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character or {}}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
+    
+    local result = workspace:Raycast(myPos, direction * distance, raycastParams)
+    
+    if result and result.Instance then
+        return result.Instance:IsDescendantOf(targetPart.Parent)
+    end
+    
+    return true
+end
+
+-- 获取范围内的敌人
+local function getEnemiesInRange()
+    local myPos = getMyPosition()
+    if not myPos then return {} end
+    
+    local enemies = {}
+    
+    -- 检查 NPC/怪物
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                -- 排除玩家
+                local isPlayer = false
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player.Character == obj then
+                        isPlayer = true
+                        break
+                    end
+                end
+                
+                if not isPlayer then
+                    local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                    if root then
+                        local distance = (root.Position - myPos).Magnitude
+                        if distance <= Settings.Range and isVisible(root) then
+                            table.insert(enemies, {
+                                model = obj,
+                                humanoid = humanoid,
+                                root = root,
+                                distance = distance
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 按距离排序（近的先打）
+    table.sort(enemies, function(a, b)
+        return a.distance < b.distance
+    end)
+    
+    return enemies
+end
+
+-- 造成伤害（方式1：触碰/接触伤害）
+local function damageByTouch(enemy)
+    -- 方式：把玩家位置瞬移到敌人旁边触发接触伤害（不推荐，容易检测）
+    -- 或者用工具攻击
+    local char = LocalPlayer.Character
+    if not char then return false end
+    
+    local tool = nil
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then
+            tool = child
+            break
+        end
+    end
+    
+    if tool then
+        pcall(function()
+            tool:Activate()
+        end)
+        return true
+    end
+    
+    return false
+end
+
+-- 造成伤害（方式2：直接改 Humanoid.Health，最容易被检测！）
+local function damageDirect(enemy)
+    -- ⚠️ 警告：直接改血最容易被服务器检测！
+    -- 仅限本地测试用，正式用别开这个
+    pcall(function()
+        enemy.humanoid.Health = enemy.humanoid.Health - Settings.Damage
+    end)
+end
+
+-- 主循环
+RunService.Heartbeat:Connect(function()
+    if not Settings.Enabled then return end
+    
+    local now = tick()
+    if now - lastAttackTime < nextAttackDelay then return end
+    
+    -- 更新下次攻击时间（带随机）
+    if Settings.RandomDelay then
+        nextAttackDelay = Settings.MinDelay + math.random() * (Settings.MaxDelay - Settings.MinDelay)
+    else
+        nextAttackDelay = Settings.AttackSpeed
+    end
+    lastAttackTime = now
+    
+    -- 获取敌人
+    local enemies = getEnemiesInRange()
+    if #enemies == 0 then return end
+    
+    -- 攻击最近的敌人
+    local target = enemies[1]
+    
+    -- 尝试用工具攻击（最安全）
+    local success = damageByTouch(target)
+    
+    -- 如果工具攻击失败，试试别的方式
+    if not success then
+        -- damageDirect(target) -- 去掉注释直接扣血（容易检测！）
+    end
+end)
+
+-- 快捷键
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Settings.ToggleKey then
+        Settings.Enabled = not Settings.Enabled
+        print(Settings.Enabled and "【杀戮光环已开启】" or "【杀戮光环已关闭】")
+    end
+end)
+
+-- 画光环范围（可视化，可选）
+local function drawAuraCircle()
+    local myPos = getMyPosition()
+    if not myPos then return end
+    
+    -- 这里可以画个圈显示范围，需要的话告诉我
+end
+
+print("========================================")
+print("  杀戮光环脚本已加载")
+print("========================================")
+print("  按 R 开关光环")
+print("  范围: " .. Settings.Range .. " studs")
+print("  状态: " .. (Settings.Enabled and "开启" or "关闭"))
+print("========================================")
+print("  ⚠️ 提示：直接改血容易被检测")
+print("  建议用工具攻击模式更安全")
+print("========================================")
