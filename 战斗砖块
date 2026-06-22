@@ -1,0 +1,179 @@
+local player = game.Players.LocalPlayer
+local playerGui = player.PlayerGui
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- 清理旧菜单
+if playerGui:FindFirstChild("BattleBricksCheat") then
+    playerGui.BattleBricksCheat:Destroy()
+end
+
+-- 创建GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BattleBricksCheat"
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 180, 0, 220)
+frame.Position = UDim2.new(1, -200, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.3
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 5)
+title.Text = "💀 战斗砖块作弊"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.Parent = frame
+
+-- 按钮函数
+local function createButton(text, yPos, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.85, 0, 0, 32)
+    btn.Position = UDim2.new(0.075, 0, 0, yPos)
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Text = text
+    btn.TextScaled = true
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Parent = frame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    btn.MouseButton1Down:Connect(function()
+        btn.BackgroundTransparency = 0.4
+    end)
+    
+    btn.MouseButton1Up:Connect(function()
+        btn.BackgroundTransparency = 0
+    end)
+    
+    btn.MouseButton1Click:Connect(callback)
+    
+    return btn
+end
+
+-- 获取或创建远程事件
+local function getRemote(name)
+    local remote = ReplicatedStorage:FindFirstChild(name)
+    if not remote then
+        remote = Instance.new("RemoteEvent")
+        remote.Name = name
+        remote.Parent = ReplicatedStorage
+    end
+    return remote
+end
+
+-- ========== 功能1：秒杀全部敌人 ==========
+createButton("💥 秒杀全部敌人", 45, Color3.fromRGB(200, 40, 40), function()
+    -- 客户端直接遍历杀
+    pcall(function()
+        for _, v in ipairs(workspace:GetChildren()) do
+            if v.Name:find("Enemy_") then
+                v:Destroy()
+            end
+        end
+    end)
+    
+    -- 尝试通过共享变量杀
+    pcall(function()
+        if _G.BattleBricks and _G.BattleBricks.enemyUnits then
+            for _, enemy in ipairs(_G.BattleBricks.enemyUnits) do
+                if enemy.part then
+                    enemy.health = 0
+                    enemy.part:Destroy()
+                end
+            end
+            _G.BattleBricks.enemyUnits = {}
+        end
+    end)
+end)
+
+-- ========== 功能2：秒杀敌方基地 ==========
+createButton("🏰 秒敌方基地", 85, Color3.fromRGB(230, 100, 0), function()
+    pcall(function()
+        local base = workspace:FindFirstChild("EnemyBase")
+        if base then
+            base:Destroy()
+        end
+        
+        if _G.BattleBricks then
+            _G.BattleBricks.enemyBaseHealth = 0
+        end
+    end)
+end)
+
+-- ========== 功能3：无限金币 ==========
+createButton("💰 无限金币", 125, Color3.fromRGB(200, 170, 0), function()
+    pcall(function()
+        if _G.BattleBricks then
+            _G.BattleBricks.playerMoney = 9999
+        end
+    end)
+    
+    -- 尝试改本地显示
+    pcall(function()
+        for _, v in ipairs(playerGui:GetDescendants()) do
+            if v:IsA("TextLabel") and v.Text:find("金币") or v.Text:find("Money") then
+                v.Text = "💰 9999"
+            end
+        end
+    end)
+end)
+
+-- ========== 功能4：一击秒杀模式 ==========
+local oneHitEnabled = false
+local oneHitBtn = createButton("⚔️ 一击秒杀: 关", 165, Color3.fromRGB(60, 60, 60), function()
+    oneHitEnabled = not oneHitEnabled
+    oneHitBtn.Text = "⚔️ 一击秒杀: " .. (oneHitEnabled and "开" or "关")
+    oneHitBtn.BackgroundColor3 = oneHitEnabled and Color3.fromRGB(30, 180, 30) or Color3.fromRGB(60, 60, 60)
+end)
+
+-- 一击秒杀循环
+spawn(function()
+    while wait(0.1) do
+        if oneHitEnabled then
+            pcall(function()
+                -- 把玩家单位伤害拉满
+                if _G.BattleBricks and _G.BattleBricks.playerUnits then
+                    for _, unit in ipairs(_G.BattleBricks.playerUnits) do
+                        if unit.config then
+                            unit.config.damage = 99999
+                        end
+                    end
+                end
+                
+                -- 直接杀附近敌人
+                local char = player.Character
+                if char and char.PrimaryPart then
+                    for _, v in ipairs(workspace:GetChildren()) do
+                        if v.Name:find("Enemy_") and v:IsA("BasePart") then
+                            if (v.Position - char.PrimaryPart.Position).Magnitude < 50 then
+                                v:Destroy()
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== 功能5：关闭菜单 ==========
+createButton("❌ 关闭菜单", 205, Color3.fromRGB(80, 80, 80), function()
+    screenGui:Destroy()
+end)
+
+print("✅ 战斗砖块作弊脚本已加载")
+print("   右上角打开菜单")
