@@ -1,0 +1,493 @@
+-- ============ Modern Glass UI ============
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== 配色 =====
+local C = {
+    Bg       = Color3.fromRGB(20, 20, 28),
+    BgLight  = Color3.fromRGB(32, 32, 42),
+    Card     = Color3.fromRGB(38, 38, 50),
+    CardHover= Color3.fromRGB(48, 48, 62),
+    Accent   = Color3.fromRGB(120, 110, 255),
+    Accent2  = Color3.fromRGB(80, 200, 255),
+    Text     = Color3.fromRGB(235, 235, 245),
+    SubText  = Color3.fromRGB(150, 150, 165),
+    Green    = Color3.fromRGB(80, 220, 130),
+    Red      = Color3.fromRGB(255, 85, 85),
+    Track    = Color3.fromRGB(50, 50, 62),
+}
+
+-- ===== ScreenGui =====
+local sg = Instance.new("ScreenGui")
+sg.Name = "GlassUI"
+sg.ResetOnSpawn = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+sg.Parent = playerGui
+
+-- ===== 主窗口 =====
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 360, 0, 380)
+main.Position = UDim2.new(0.5, -180, 0.5, -190)
+main.BackgroundColor3 = C.Bg
+main.BackgroundTransparency = 0.05
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
+main.Parent = sg
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(80, 80, 100)
+stroke.Thickness = 1
+stroke.Transparency = 0.3
+stroke.Parent = main
+
+-- 阴影
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 40, 1, 40)
+shadow.Position = UDim2.new(0, -20, 0, -20)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.5
+shadow.ZIndex = main.ZIndex - 1
+shadow.Parent = main
+
+-- ===== 标题栏 =====
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 44)
+titleBar.BackgroundColor3 = C.BgLight
+titleBar.BorderSizePixel = 0
+titleBar.Parent = main
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 12)
+
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 12)
+titleFix.Position = UDim2.new(0, 0, 1, -12)
+titleFix.BackgroundColor3 = C.BgLight
+titleFix.BorderSizePixel = 0
+titleFix.Parent = titleBar
+
+-- 状态指示灯（脉冲动画）
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 8, 0, 8)
+statusDot.Position = UDim2.new(0, 16, 0.5, -4)
+statusDot.BackgroundColor3 = C.Green
+statusDot.BorderSizePixel = 0
+statusDot.Parent = titleBar
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+task.spawn(function()
+    while statusDot.Parent do
+        TweenService:Create(statusDot, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = 0.5
+        }):Play()
+        task.wait(0.8)
+        TweenService:Create(statusDot, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = 0
+        }):Play()
+        task.wait(0.8)
+    end
+end)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -100, 1, 0)
+title.Position = UDim2.new(0, 34, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "⚡ Control Hub"
+title.TextColor3 = C.Text
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
+
+-- 关闭按钮
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -38, 0.5, -16)
+closeBtn.BackgroundColor3 = C.Card
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = C.SubText
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 14
+closeBtn.BorderSizePixel = 0
+closeBtn.Parent = titleBar
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+closeBtn.MouseEnter:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = C.Red, TextColor3 = C.Text }):Play()
+end)
+closeBtn.MouseLeave:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), { BackgroundColor3 = C.Card, TextColor3 = C.SubText }):Play()
+end)
+closeBtn.MouseButton1Click:Connect(function()
+    local tw = TweenService:Create(main, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 360, 0, 0),
+        BackgroundTransparency = 1
+    })
+    tw:Play()
+    tw.Completed:Connect(function()
+        sg:Destroy()
+    end)
+end)
+
+-- ===== 标签页栏 =====
+local tabBar = Instance.new("Frame")
+tabBar.Size = UDim2.new(1, -24, 0, 34)
+tabBar.Position = UDim2.new(0, 12, 0, 52)
+tabBar.BackgroundTransparency = 1
+tabBar.Parent = main
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.FillDirection = Enum.FillDirection.Horizontal
+tabLayout.Padding = UDim.new(0, 6)
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.Parent = tabBar
+
+local tabs = {}
+local pages = {}
+
+local function createTab(name, order)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 100, 1, 0)
+    btn.BackgroundColor3 = C.Card
+    btn.Text = name
+    btn.TextColor3 = C.SubText
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 13
+    btn.BorderSizePixel = 0
+    btn.Parent = tabBar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.LayoutOrder = order
+
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 0, 0, 2)
+    indicator.Position = UDim2.new(0.5, 0, 1, -2)
+    indicator.BackgroundColor3 = C.Accent
+    indicator.BorderSizePixel = 0
+    indicator.Parent = btn
+    Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
+
+    -- 页面容器
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, -24, 1, -100)
+    page.Position = UDim2.new(0, 12, 0, 96)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = C.Accent
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.Visible = false
+    page.Parent = main
+
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.Padding = UDim.new(0, 8)
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Parent = page
+
+    local function selectThis()
+        for _, t in ipairs(tabs) do
+            t.btn.TextColor3 = C.SubText
+            t.btn.BackgroundColor3 = C.Card
+            TweenService:Create(t.indicator, TweenInfo.new(0.2), { Size = UDim2.new(0, 0, 0, 2) }):Play()
+            t.page.Visible = false
+        end
+        btn.TextColor3 = C.Text
+        btn.BackgroundColor3 = C.CardHover
+        TweenService:Create(indicator, TweenInfo.new(0.25, Enum.EasingStyle.Quart), { Size = UDim2.new(1, 0, 0, 2) }):Play()
+        page.Visible = true
+    end
+
+    btn.MouseButton1Click:Connect(selectThis)
+
+    table.insert(tabs, { btn = btn, page = page, indicator = indicator })
+
+    return page
+end
+
+-- ===== 组件：Toggle =====
+local function createToggle(parent, name, desc, default, onToggle)
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, 0, 0, 50)
+    card.BackgroundColor3 = C.Card
+    card.BorderSizePixel = 0
+    card.Parent = parent
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -80, 0, 20)
+    label.Position = UDim2.new(0, 14, 0, 8)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = C.Text
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = card
+
+    local subLabel = Instance.new("TextLabel")
+    subLabel.Size = UDim2.new(1, -80, 0, 16)
+    subLabel.Position = UDim2.new(0, 14, 0, 27)
+    subLabel.BackgroundTransparency = 1
+    subLabel.Text = desc
+    subLabel.TextColor3 = C.SubText
+    subLabel.Font = Enum.Font.Gotham
+    subLabel.TextSize = 12
+    subLabel.TextXAlignment = Enum.TextXAlignment.Left
+    subLabel.Parent = card
+
+    local toggle = Instance.new("TextButton")
+    toggle.Size = UDim2.new(0, 44, 0, 24)
+    toggle.Position = UDim2.new(1, -58, 0.5, -12)
+    toggle.BackgroundColor3 = default and C.Green or C.Track
+    toggle.Text = ""
+    toggle.BorderSizePixel = 0
+    toggle.Parent = card
+    Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 12)
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 18, 0, 18)
+    knob.Position = default and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = toggle
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local state = default
+    toggle.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            TweenService:Create(toggle, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { BackgroundColor3 = C.Green }):Play()
+            TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { Position = UDim2.new(1, -21, 0.5, -9) }):Play()
+        else
+            TweenService:Create(toggle, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { BackgroundColor3 = C.Track }):Play()
+            TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quart), { Position = UDim2.new(0, 3, 0.5, -9) }):Play()
+        end
+        if onToggle then onToggle(state) end
+    end)
+
+    -- hover
+    card.MouseEnter:Connect(function()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.CardHover }):Play()
+    end)
+    card.MouseLeave:Connect(function()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.Card }):Play()
+    end)
+
+    return card
+end
+
+-- ===== 组件：Slider =====
+local function createSlider(parent, name, minVal, maxVal, defaultVal, onDrag)
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(1, 0, 0, 56)
+    card.BackgroundColor3 = C.Card
+    card.BorderSizePixel = 0
+    card.Parent = parent
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 200, 0, 20)
+    label.Position = UDim2.new(0, 14, 0, 8)
+    label.BackgroundTransparency = 1
+    label.Text = name
+    label.TextColor3 = C.Text
+    label.Font = Enum.Font.GothamMedium
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = card
+
+    local valLabel = Instance.new("TextLabel")
+    valLabel.Size = UDim2.new(0, 60, 0, 20)
+    valLabel.Position = UDim2.new(1, -74, 0, 8)
+    valLabel.BackgroundTransparency = 1
+    valLabel.Text = tostring(defaultVal)
+    valLabel.TextColor3 = C.Accent2
+    valLabel.Font = Enum.Font.GothamBold
+    valLabel.TextSize = 14
+    valLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valLabel.Parent = card
+
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1, -28, 0, 6)
+    track.Position = UDim2.new(0, 14, 0, 38)
+    track.BackgroundColor3 = C.Track
+    track.BorderSizePixel = 0
+    track.Parent = card
+    Instance.new("UICorner", track).CornerRadius = UDim.new(0, 3)
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 3)
+
+    -- 渐变填充
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new(C.Accent, C.Accent2)
+    gradient.Parent = fill
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 16, 0, 16)
+    knob.Position = UDim2.new(fill.Size.X.Scale, -8, 0.5, -8)
+    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    knob.BorderSizePixel = 0
+    knob.Parent = track
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+    local knobStroke = Instance.new("UIStroke")
+    knobStroke.Color = C.Accent
+    knobStroke.Thickness = 2
+    knobStroke.Parent = knob
+
+    local dragging = false
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local pct = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+            local val = math.floor(minVal + (maxVal - minVal) * pct + 0.5)
+            fill.Size = UDim2.new(pct, 0, 1, 0)
+            knob.Position = UDim2.new(pct, -8, 0.5, -8)
+            valLabel.Text = tostring(val)
+            if onDrag then onDrag(val) end
+        end
+    end)
+
+    card.MouseEnter:Connect(function()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.CardHover }):Play()
+    end)
+    card.MouseLeave:Connect(function()
+        TweenService:Create(card, TweenInfo.new(0.15), { BackgroundColor3 = C.Card }):Play()
+    end)
+
+    return card
+end
+
+-- ===== 组件：按钮 =====
+local function createButton(parent, name, onClick)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = C.Card
+    btn.Text = name
+    btn.TextColor3 = C.Text
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new(C.Accent, C.Accent2)
+    gradient.Rotation = 90
+    gradient.Transparency = NumberSequence.new(1, 1)
+    gradient.Parent = btn
+
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = C.CardHover }):Play()
+        TweenService:Create(gradient, TweenInfo.new(0.15), {
+            Transparency = NumberSequence.new(0.85, 0.85)
+        }):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = C.Card }):Play()
+        TweenService:Create(gradient, TweenInfo.new(0.15), {
+            Transparency = NumberSequence.new(1, 1)
+        }):Play()
+    end)
+    btn.MouseButton1Click:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.05), { Size = UDim2.new(1, -4, 0, 36) }):Play()
+        task.wait(0.05)
+        TweenService:Create(btn, TweenInfo.new(0.1), { Size = UDim2.new(1, 0, 0, 40) }):Play()
+        if onClick then onClick() end
+    end)
+    return btn
+end
+
+-- ===== 组件：分区标题 =====
+local function createSection(parent, name)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 24)
+    label.BackgroundTransparency = 1
+    label.Text = "  " .. name
+    label.TextColor3 = C.SubText
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = parent
+    return label
+end
+
+-- ===== 创建标签页和内容 =====
+local page1 = createTab("🎮 游戏", 1)
+local page2 = createTab("🎨 显示", 2)
+local page3 = createTab("⚙️ 设置", 3)
+
+-- 默认选中第一个
+tabs[1].btn.TextColor3 = C.Text
+tabs[1].btn.BackgroundColor3 = C.CardHover
+TweenService:Create(tabs[1].indicator, TweenInfo.new(0.25), { Size = UDim2.new(1, 0, 0, 2) }):Play()
+tabs[1].page.Visible = true
+
+-- --- 页面1：游戏 ---
+createSection(page1, "玩法")
+createToggle(page1, "自动跳跃", "碰到障碍物自动跳", true, function(s) print("自动跳跃:", s) end)
+createToggle(page1, "智能瞄准", "辅助瞄准目标", false, function(s) print("瞄准:", s) end)
+createSlider(page1, "移动速度", 1, 20, 10, function(v) print("速度:", v) end)
+createSection(page1, "操作")
+createButton(page1, "🔄 重置角色", function() print("重置!") end)
+
+-- --- 页面2：显示 ---
+createSection(page2, "画面")
+createSlider(page2, "视野距离", 70, 120, 90, function(v) print("FOV:", v) end)
+createToggle(page2, "高质量光影", "启用高级阴影", true, function(s) print("光影:", s) end)
+createToggle(page2, "动态模糊", "移动时模糊效果", false, function(s) print("模糊:", s) end)
+createSection(page2, "界面")
+createToggle(page2, "显示FPS", "左上角显示帧率", true, function(s) print("FPS:", s) end)
+createToggle(page2, "显示坐标", "显示当前位置", false, function(s) print("坐标:", s) end)
+
+-- --- 页面3：设置 ---
+createSection(page3, "音频")
+createSlider(page3, "主音量", 0, 100, 75, function(v) print("音量:", v) end)
+createSlider(page3, "音乐音量", 0, 100, 50, function(v) print("音乐:", v) end)
+createSection(page3, "其他")
+createToggle(page3, "减少动画", "降低动画效果", false, function(s) print("减动画:", s) end)
+createButton(page3, "💾 保存设置", function() print("已保存!") end)
+
+-- ===== 开场动画 =====
+main.Size = UDim2.new(0, 360, 0, 0)
+main.BackgroundTransparency = 1
+TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 360, 0, 380),
+    BackgroundTransparency = 0.05
+}):Play()
+
+-- ===== 拖拽 =====
+local dragging, dragStart, startPos = false, nil, nil
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = UserInputService:GetMouseLocation()
+        startPos = main.Position
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = UserInputService:GetMouseLocation() - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
