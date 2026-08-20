@@ -11,7 +11,7 @@ _G.AI_UI_Loaded = true
 -- ========== 配置区（请修改） ==========
 local CONFIG = {
     API_URL = "https://token.sensenova.cn/v1/chat/completions",
-    API_KEY = "sk-你的API密钥",  -- 替换为你的真实密钥
+    API_KEY = "sk-YH1dXT6WqssxvuOnw9NNEu3vZLkKCKRC",  -- 替换为你的真实密钥
     MODEL = "gpt-4o-mini",  -- 或 "claude-3-opus-20240229" 等支持的模型
     SYSTEM_PROMPT = [[你是一个专业的 Roblox Lua 脚本开发者。请根据用户需求生成完整、可运行的 Roblox Lua 脚本。
 要求：
