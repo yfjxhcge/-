@@ -115,6 +115,7 @@ local CONFIG = {
         Yellow = Color3.fromRGB(250, 204, 21),
         White = Color3.fromRGB(255, 255, 255),
         Gold = Color3.fromRGB(255, 215, 0),
+        CardLight = Color3.fromRGB(32, 32, 55),
     }
 }
 
@@ -127,6 +128,7 @@ local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
 local LP = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 -- 清理旧UI
 for _, v in pairs(CoreGui:GetChildren()) do if v.Name:find("DeltaUlt") then v:Destroy() end end
