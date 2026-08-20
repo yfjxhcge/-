@@ -10,7 +10,7 @@ _G.DeltaAI_Loaded = true
 -- ========== 配置区（必改） ==========
 local CONFIG = {
     API_URL = "https://token.sensenova.cn/v1/chat/completions",
-    API_KEY = "sk-你的API密钥",  -- ← 改这里！
+    API_KEY = "sk-YH1dXT6WqssxvuOnw9NNEu3vZLkKCKRC",  -- ← 改这里！
     MODEL = "gpt-4o-mini",
     SYSTEM_PROMPT = [[你是一个专业的 Roblox Lua 脚本开发者。请根据用户需求生成完整、可运行的 Roblox Lua 脚本。只输出 Lua 代码，不需要解释。]]
 }
