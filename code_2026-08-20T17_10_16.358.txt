@@ -1,0 +1,503 @@
+-- ==========================================
+--  Delta 专用 - AI 脚本生成器 (Drawing 库版)
+--  修复：透明度问题，颜色更明显
+-- ==========================================
+
+-- 防止重复加载
+if _G.DeltaAI_Loaded then return end
+_G.DeltaAI_Loaded = true
+
+-- ========== 配置区（必改） ==========
+local CONFIG = {
+    API_URL = "https://token.sensenova.cn/v1/chat/completions",
+    API_KEY = "sk-你的API密钥",  -- ← 改这里！
+    MODEL = "gpt-4o-mini",
+    SYSTEM_PROMPT = [[你是一个专业的 Roblox Lua 脚本开发者。请根据用户需求生成完整、可运行的 Roblox Lua 脚本。只输出 Lua 代码，不需要解释。]]
+}
+
+-- ========== 服务 ==========
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local Camera = workspace.CurrentCamera
+
+-- ========== 工具函数 ==========
+
+-- 获取屏幕尺寸
+local function GetScreenSize()
+    if Camera then
+        return Camera.ViewportSize
+    end
+    return Vector2.new(800, 600)
+end
+
+-- HTTP 请求（通用方式）
+local function HttpRequest(url, method, headers, body)
+    local requestFunc = http_request or request or (syn and syn.request)
+    if not requestFunc then
+        return nil, "不支持 HTTP 请求"
+    end
+    local success, response = pcall(requestFunc, {
+        Url = url,
+        Method = method or "GET",
+        Headers = headers or {},
+        Body = body and HttpService:JSONEncode(body) or nil
+    })
+    if success then
+        return response
+    end
+    return nil, tostring(response)
+end
+
+-- 调用 AI
+local function AskAI(prompt, callback)
+    local headers = {
+        ["Content-Type"] = "application/json",
+        ["Authorization"] = "Bearer " .. CONFIG.API_KEY
+    }
+    local body = {
+        model = CONFIG.MODEL,
+        messages = {
+            { role = "system", content = CONFIG.SYSTEM_PROMPT },
+            { role = "user", content = prompt }
+        },
+        temperature = 0.3,
+        max_tokens = 2048
+    }
+    
+    local response, err = HttpRequest(CONFIG.API_URL, "POST", headers, body)
+    if not response then
+        callback(nil, "API请求失败: " .. (err or "未知错误"))
+        return
+    end
+    
+    local ok, data = pcall(HttpService.JSONDecode, HttpService, response.Body)
+    if not ok or not data then
+        callback(nil, "解析失败: " .. tostring(response.Body))
+        return
+    end
+    
+    if data.choices and data.choices[1] then
+        local content = data.choices[1].message.content
+        local code = content:match("```lua\n(.-)```") 
+            or content:match("```\n(.-)```") 
+            or content
+        callback(code, nil)
+    else
+        callback(nil, "AI返回异常: " .. HttpService:JSONEncode(data))
+    end
+end
+
+-- 执行代码
+local function RunCode(code)
+    local func, err = loadstring(code)
+    if not func then
+        return false, "编译错误: " .. tostring(err)
+    end
+    local ok, result = pcall(func)
+    if not ok then
+        return false, "运行时错误: " .. tostring(result)
+    end
+    return true, result
+end
+
+-- ========== Drawing UI ==========
+
+local ScreenSize = GetScreenSize()
+local UI = {}
+local Window = {
+    X = (ScreenSize.X - 650) / 2,
+    Y = (ScreenSize.Y - 480) / 2,
+    W = 650,
+    H = 480,
+    Title = "🤖 AI 脚本生成器 (Delta)"
+}
+
+-- 创建 Drawing 对象
+local function NewDraw(class, props)
+    local obj = Drawing.new(class)
+    if props then
+        for k, v in pairs(props) do
+            obj[k] = v
+        end
+    end
+    return obj
+end
+
+-- 鼠标是否在对象上
+local function IsOver(obj)
+    local mx, my = UIS:GetMouseLocation().X, UIS:GetMouseLocation().Y
+    if obj.ClassName == "Square" then
+        return mx >= obj.X and mx <= obj.X + obj.Width 
+           and my >= obj.Y and my <= obj.Y + obj.Height
+    elseif obj.ClassName == "Circle" then
+        local dx, dy = mx - obj.X, my - obj.Y
+        return (dx*dx + dy*dy) <= obj.Radius * obj.Radius
+    end
+    return false
+end
+
+-- 创建所有 UI 元素
+local function BuildUI()
+    -- 主背景（不透明）
+    UI.Bg = NewDraw("Square", {
+        X = Window.X, Y = Window.Y,
+        Width = Window.W, Height = Window.H,
+        Color = Color3.fromRGB(25, 25, 35),
+        Filled = true,
+        Transparency = 0,  -- 完全不透明！
+        ZIndex = 1000
+    })
+    
+    -- 边框
+    UI.Border = NewDraw("Square", {
+        X = Window.X - 1, Y = Window.Y - 1,
+        Width = Window.W + 2, Height = Window.H + 2,
+        Color = Color3.fromRGB(80, 80, 120),
+        Filled = false,
+        Thickness = 2,
+        ZIndex = 1001
+    })
+    
+    -- 标题栏
+    UI.TitleBg = NewDraw("Square", {
+        X = Window.X, Y = Window.Y,
+        Width = Window.W, Height = 35,
+        Color = Color3.fromRGB(40, 40, 60),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    
+    UI.Title = NewDraw("Text", {
+        X = Window.X + 15, Y = Window.Y + 8,
+        Text = Window.Title,
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 18,
+        ZIndex = 1003
+    })
+    
+    -- 关闭按钮
+    UI.Close = NewDraw("Circle", {
+        X = Window.X + Window.W - 20, Y = Window.Y + 17,
+        Radius = 10,
+        Color = Color3.fromRGB(255, 50, 50),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1003
+    })
+    UI.CloseT = NewDraw("Text", {
+        X = Window.X + Window.W - 20, Y = Window.Y + 11,
+        Text = "✕",
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 16,
+        Center = true,
+        ZIndex = 1004
+    })
+    
+    -- 输入框背景
+    UI.InputBg = NewDraw("Square", {
+        X = Window.X + 15, Y = Window.Y + 50,
+        Width = Window.W - 30, Height = 55,
+        Color = Color3.fromRGB(35, 35, 50),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    
+    -- 输入框提示
+    UI.Placeholder = NewDraw("Text", {
+        X = Window.X + 25, Y = Window.Y + 68,
+        Text = "输入需求，例如：制作飞行脚本...",
+        Color = Color3.fromRGB(160, 160, 160),
+        Size = 15,
+        ZIndex = 1003
+    })
+    
+    -- 输入文本
+    UI.InputText = NewDraw("Text", {
+        X = Window.X + 25, Y = Window.Y + 68,
+        Text = "",
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 15,
+        ZIndex = 1004
+    })
+    
+    -- 发送按钮
+    UI.Send = NewDraw("Square", {
+        X = Window.X + Window.W - 115, Y = Window.Y + 52,
+        Width = 95, Height = 35,
+        Color = Color3.fromRGB(30, 144, 255),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    UI.SendT = NewDraw("Text", {
+        X = Window.X + Window.W - 67, Y = Window.Y + 60,
+        Text = "🚀 生成",
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 15,
+        Center = true,
+        ZIndex = 1003
+    })
+    
+    -- 代码区域背景
+    UI.CodeBg = NewDraw("Square", {
+        X = Window.X + 15, Y = Window.Y + 120,
+        Width = Window.W - 30, Height = 290,
+        Color = Color3.fromRGB(12, 12, 22),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    
+    UI.CodeBorder = NewDraw("Square", {
+        X = Window.X + 15, Y = Window.Y + 120,
+        Width = Window.W - 30, Height = 290,
+        Color = Color3.fromRGB(60, 60, 90),
+        Filled = false,
+        Thickness = 1.5,
+        ZIndex = 1003
+    })
+    
+    -- 代码文本
+    UI.CodeText = NewDraw("Text", {
+        X = Window.X + 25, Y = Window.Y + 130,
+        Text = "等待 AI 生成代码...",
+        Color = Color3.fromRGB(0, 255, 100),
+        Size = 14,
+        ZIndex = 1004
+    })
+    
+    -- 状态文字
+    UI.Status = NewDraw("Text", {
+        X = Window.X + 160, Y = Window.Y + 435,
+        Text = "✅ 就绪 | 输入需求后点击生成",
+        Color = Color3.fromRGB(180, 180, 180),
+        Size = 13,
+        ZIndex = 1003
+    })
+    
+    -- 执行按钮
+    UI.Exec = NewDraw("Square", {
+        X = Window.X + 15, Y = Window.Y + 425,
+        Width = 110, Height = 35,
+        Color = Color3.fromRGB(50, 205, 90),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    UI.ExecT = NewDraw("Text", {
+        X = Window.X + 70, Y = Window.Y + 433,
+        Text = "▶ 执行",
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 15,
+        Center = true,
+        ZIndex = 1003
+    })
+    
+    -- 清空按钮
+    UI.Clear = NewDraw("Square", {
+        X = Window.X + 140, Y = Window.Y + 425,
+        Width = 70, Height = 35,
+        Color = Color3.fromRGB(220, 50, 50),
+        Filled = true,
+        Transparency = 0,  -- 不透明
+        ZIndex = 1002
+    })
+    UI.ClearT = NewDraw("Text", {
+        X = Window.X + 175, Y = Window.Y + 433,
+        Text = "清空",
+        Color = Color3.fromRGB(255, 255, 255),
+        Size = 15,
+        Center = true,
+        ZIndex = 1003
+    })
+    
+    print("✅ UI 元素创建完成，共 " .. #(function() local c=0 for _ in pairs(UI) do c=c+1 end return c end)() .. " 个元素")
+end
+
+-- 更新所有元素位置（拖动时）
+local function UpdatePositions()
+    local w = Window
+    UI.Bg.X = w.X; UI.Bg.Y = w.Y
+    UI.Border.X = w.X - 1; UI.Border.Y = w.Y - 1
+    UI.TitleBg.X = w.X; UI.TitleBg.Y = w.Y
+    UI.Title.X = w.X + 15; UI.Title.Y = w.Y + 8
+    UI.Close.X = w.X + w.W - 20; UI.Close.Y = w.Y + 17
+    UI.CloseT.X = w.X + w.W - 20; UI.CloseT.Y = w.Y + 11
+    
+    UI.InputBg.X = w.X + 15; UI.InputBg.Y = w.Y + 50
+    UI.Placeholder.X = w.X + 25; UI.Placeholder.Y = w.Y + 68
+    UI.InputText.X = w.X + 25; UI.InputText.Y = w.Y + 68
+    UI.Send.X = w.X + w.W - 115; UI.Send.Y = w.Y + 52
+    UI.SendT.X = w.X + w.W - 67; UI.SendT.Y = w.Y + 60
+    
+    UI.CodeBg.X = w.X + 15; UI.CodeBg.Y = w.Y + 120
+    UI.CodeBorder.X = w.X + 15; UI.CodeBorder.Y = w.Y + 120
+    UI.CodeText.X = w.X + 25; UI.CodeText.Y = w.Y + 130
+    
+    UI.Status.X = w.X + 160; UI.Status.Y = w.Y + 435
+    UI.Exec.X = w.X + 15; UI.Exec.Y = w.Y + 425
+    UI.ExecT.X = w.X + 70; UI.ExecT.Y = w.Y + 433
+    UI.Clear.X = w.X + 140; UI.Clear.Y = w.Y + 425
+    UI.ClearT.X = w.X + 175; UI.ClearT.Y = w.Y + 433
+end
+
+-- ========== 交互逻辑 ==========
+
+local UserInput = ""
+local IsTyping = false
+local Dragging = false
+local DragOffset = Vector2.new(0, 0)
+local UIHidden = false
+
+-- 构建 UI
+BuildUI()
+
+-- 鼠标点击
+UIS.InputBegan:Connect(function(input, processed)
+    if processed or UIHidden then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local mx, my = UIS:GetMouseLocation().X, UIS:GetMouseLocation().Y
+        
+        -- 关闭按钮
+        if IsOver(UI.Close) then
+            UIHidden = true
+            for _, obj in pairs(UI) do
+                if type(obj) == "table" and obj.Visible ~= nil then
+                    obj.Visible = false
+                end
+            end
+            return
+        end
+        
+        -- 发送按钮
+        if IsOver(UI.Send) and UserInput ~= "" then
+            UI.Status.Text = "🤔 正在向 AI 请求..."
+            UI.CodeText.Text = "生成中..."
+            
+            AskAI(UserInput, function(code, err)
+                if code then
+                    UI.CodeText.Text = code
+                    UI.Status.Text = "✅ 生成成功！点击「执行」运行"
+                else
+                    UI.CodeText.Text = "-- 错误: " .. (err or "未知")
+                    UI.Status.Text = "❌ " .. (err or "失败")
+                end
+            end)
+            return
+        end
+        
+        -- 执行按钮
+        if IsOver(UI.Exec) and UI.CodeText.Text ~= "等待 AI 生成代码..." and UI.CodeText.Text ~= "生成中..." then
+            UI.Status.Text = "⚡ 正在执行..."
+            local ok, result = RunCode(UI.CodeText.Text)
+            if ok then
+                UI.Status.Text = "✅ 执行成功！"
+            else
+                UI.Status.Text = "❌ 执行失败"
+                UI.CodeText.Text = UI.CodeText.Text .. "\n\n-- " .. tostring(result)
+            end
+            return
+        end
+        
+        -- 清空按钮
+        if IsOver(UI.Clear) then
+            UI.CodeText.Text = "等待 AI 生成代码..."
+            UI.Status.Text = "已清空"
+            return
+        end
+        
+        -- 输入框点击
+        if IsOver(UI.InputBg) then
+            IsTyping = true
+            UI.Placeholder.Visible = false
+            UI.Status.Text = "⌨️ 输入中... Enter 发送"
+            return
+        else
+            IsTyping = false
+            if UserInput == "" then
+                UI.Placeholder.Visible = true
+            end
+        end
+        
+        -- 标题栏拖动
+        if IsOver(UI.TitleBg) then
+            Dragging = true
+            DragOffset = Vector2.new(mx - Window.X, my - Window.Y)
+        end
+    end
+end)
+
+-- 键盘输入
+UIS.InputBegan:Connect(function(input, processed)
+    if processed or not IsTyping or UIHidden then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        local key = input.KeyCode
+        
+        if key == Enum.KeyCode.Backspace then
+            UserInput = UserInput:sub(1, -2)
+        elseif key == Enum.KeyCode.Return then
+            IsTyping = false
+            if UserInput ~= "" then
+                UI.Status.Text = "🤔 正在向 AI 请求..."
+                AskAI(UserInput, function(code, err)
+                    if code then
+                        UI.CodeText.Text = code
+                        UI.Status.Text = "✅ 生成成功！"
+                    else
+                        UI.CodeText.Text = "-- 错误: " .. (err or "未知")
+                        UI.Status.Text = "❌ " .. (err or "失败")
+                    end
+                end)
+            end
+        elseif key == Enum.KeyCode.Escape then
+            IsTyping = false
+            if UserInput == "" then
+                UI.Placeholder.Visible = true
+            end
+        else
+            local char = input.KeyCode.Name
+            if #char == 1 then
+                UserInput = UserInput .. char
+            elseif char == "Space" then
+                UserInput = UserInput .. " "
+            end
+        end
+        UI.InputText.Text = UserInput
+    end
+end)
+
+-- 鼠标移动（拖动）
+UIS.InputChanged:Connect(function(input, processed)
+    if processed or UIHidden then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement and Dragging then
+        local mx, my = UIS:GetMouseLocation().X, UIS:GetMouseLocation().Y
+        Window.X = mx - DragOffset.X
+        Window.Y = my - DragOffset.Y
+        UpdatePositions()
+    end
+end)
+
+-- 鼠标释放
+UIS.InputEnded:Connect(function(input, processed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = false
+    end
+end)
+
+-- 渲染循环
+RunService.RenderStepped:Connect(function()
+    if UIHidden then return end
+    
+    -- 光标闪烁
+    if IsTyping then
+        local cursor = (tick() % 1 < 0.5) and "|" or " "
+        UI.InputText.Text = UserInput .. cursor
+    end
+end)
+
+-- 完成
+print("✅ Delta AI 脚本生成器已加载！")
+print("💡 UI 应该出现在屏幕中央，请查看游戏画面")
