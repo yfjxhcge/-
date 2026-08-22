@@ -1,0 +1,1003 @@
+--[[ 🤖 智能AI脚本生成系统 v2.0 - 接入 SenseNova API ]]
+--[[ 仅修改生成逻辑为真实 API 调用，其余代码完全不动 ]]
+
+-- ============ 核心初始化 ============
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerMouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+
+-- 全局数据存储（安全初始化）
+_G.AIScript = _G.AIScript or {
+    SavedScripts = {},
+    ExecutionLog = {},
+    Settings = {
+        Theme = "Dark",
+        AutoSave = true,
+        Notifications = true
+    }
+}
+
+-- ============ API 配置 ============
+local API_CONFIG = {
+    BaseURL = "https://token.sensenova.cn/v1",
+    Endpoint = "/chat/completions",
+    Model = "SenseNova-5.5",  -- 根据实际可用模型调整
+    ApiKey = "",              -- 运行时从输入框读取
+    Temperature = 0.7,
+    MaxTokens = 4096
+}
+
+-- ============ 颜色系统 ============
+local Colors = {
+    Primary = Color3.fromRGB(88, 101, 242),
+    Background = Color3.fromRGB(20, 20, 40),
+    Surface = Color3.fromRGB(28, 28, 50),
+    Text = Color3.fromRGB(200, 200, 255),
+    Accent = Color3.fromRGB(255, 200, 50),
+    Success = Color3.fromRGB(50, 200, 100),
+    Error = Color3.fromRGB(255, 60, 60),
+    Gold = Color3.fromRGB(255, 215, 0)
+}
+
+-- ============ 辅助函数 ============
+local function CreateInstance(Class, Properties)
+    local Instance = Instance.new(Class)
+    for Prop, Value in pairs(Properties) do
+        if Prop ~= "Parent" then
+            pcall(function()
+                Instance[Prop] = Value
+            end)
+        end
+    end
+    if Properties.Parent then
+        Instance.Parent = Properties.Parent
+    end
+    return Instance
+end
+
+local function AddCorner(Frame, Radius)
+    pcall(function()
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, Radius or 8)
+        Corner.Parent = Frame
+    end)
+end
+
+local function ShowNotification(Title, Message, Duration)
+    Duration = Duration or 2
+    local NotifyGui = CreateInstance("ScreenGui", {
+        Name = "Notification",
+        Parent = CoreGui,
+        ResetOnSpawn = false
+    })
+    
+    local NotifyFrame = CreateInstance("Frame", {
+        BackgroundColor3 = Colors.Surface,
+        Position = UDim2.new(0.5, -150, 0, -80),
+        Size = UDim2.new(0, 300, 0, 60),
+        BackgroundTransparency = 0.1,
+        Parent = NotifyGui
+    })
+    AddCorner(NotifyFrame, 12)
+    
+    CreateInstance("TextLabel", {
+        Text = Title,
+        TextSize = 16,
+        TextColor3 = Colors.Accent,
+        Font = Enum.Font.GothamBold,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 5),
+        Size = UDim2.new(0, 280, 0, 20),
+        Parent = NotifyFrame
+    })
+    
+    CreateInstance("TextLabel", {
+        Text = Message,
+        TextSize = 12,
+        TextColor3 = Colors.Text,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0, 28),
+        Size = UDim2.new(0, 280, 0, 26),
+        TextWrapped = true,
+        Parent = NotifyFrame
+    })
+    
+    task.wait(Duration)
+    NotifyGui:Destroy()
+end
+
+-- ============ UI主框架 ============
+local MainGui = CreateInstance("ScreenGui", {
+    Name = "AIScriptSystem",
+    Parent = CoreGui,
+    ResetOnSpawn = false
+})
+
+local MainWindow = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Background,
+    Position = UDim2.new(0.5, -350, 0.5, -250),
+    Size = UDim2.new(0, 700, 0, 500),
+    BackgroundTransparency = 0.05,
+    Parent = MainGui
+})
+AddCorner(MainWindow, 15)
+
+local Border = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Gold,
+    Position = UDim2.new(0, -2, 0, -2),
+    Size = UDim2.new(1, 4, 1, 4),
+    BackgroundTransparency = 0.4,
+    Parent = MainWindow,
+    ZIndex = 0
+})
+AddCorner(Border, 17)
+
+-- ============ 标题栏 ============
+local TitleBar = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Surface,
+    Size = UDim2.new(1, 0, 0, 50),
+    Position = UDim2.new(0, 0, 0, 0),
+    Parent = MainWindow
+})
+AddCorner(TitleBar, 14)
+
+CreateInstance("TextLabel", {
+    Text = "🤖 AI智能脚本生成系统 v2.0",
+    TextSize = 20,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 15, 0, 0),
+    Size = UDim2.new(0, 500, 1, 0),
+    Parent = TitleBar
+})
+
+CreateInstance("TextLabel", {
+    Text = "✨ SenseNova API 接入版",
+    TextSize = 11,
+    TextColor3 = Colors.Text,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 520, 0, 0),
+    Size = UDim2.new(0, 160, 1, 0),
+    TextXAlignment = Enum.TextXAlignment.Right,
+    Parent = TitleBar
+})
+
+local CloseBtn = CreateInstance("TextButton", {
+    Text = "✕",
+    TextSize = 20,
+    TextColor3 = Colors.Error,
+    Font = Enum.Font.GothamBold,
+    BackgroundColor3 = Color3.fromRGB(50, 20, 20),
+    Position = UDim2.new(1, -44, 0, 6),
+    Size = UDim2.new(0, 36, 0, 36),
+    Parent = TitleBar,
+    AutoButtonColor = false
+})
+AddCorner(CloseBtn, 10)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    MainGui:Destroy()
+end)
+
+-- 拖拽功能
+local Dragging, DragStart, StartPos
+TitleBar.InputBegan:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = true
+        DragStart = Input.Position
+        StartPos = MainWindow.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseMovement and Dragging then
+        local Delta = Input.Position - DragStart
+        MainWindow.Position = UDim2.new(
+            StartPos.X.Scale,
+            StartPos.X.Offset + Delta.X,
+            StartPos.Y.Scale,
+            StartPos.Y.Offset + Delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+        Dragging = false
+    end
+end)
+
+-- ============ 选项卡系统 ============
+local TabContainer = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Surface,
+    BackgroundTransparency = 0.3,
+    Size = UDim2.new(1, 0, 0, 40),
+    Position = UDim2.new(0, 0, 0, 50),
+    Parent = MainWindow
+})
+
+local TabButtonContainer = CreateInstance("Frame", {
+    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -10, 1, 0),
+    Position = UDim2.new(0, 5, 0, 0),
+    Parent = TabContainer
+})
+
+local Tabs = {
+    {Name = "🏠 首页", Key = "Home"},
+    {Name = "🤖 AI生成", Key = "AIGen"},
+    {Name = "💾 保存的脚本", Key = "Saved"},
+    {Name = "📋 日志", Key = "Logs"},
+    {Name = "⚙️ 设置", Key = "Settings"}
+}
+
+local TabPages = {}
+local TabButtons = {}
+local CurrentTab = "Home"
+
+local ContentArea = CreateInstance("ScrollingFrame", {
+    BackgroundColor3 = Colors.Background,
+    BackgroundTransparency = 0.3,
+    Position = UDim2.new(0, 0, 0, 90),
+    Size = UDim2.new(1, 0, 1, -90),
+    ScrollBarThickness = 4,
+    ScrollBarImageColor3 = Colors.Primary,
+    BorderSizePixel = 0,
+    CanvasSize = UDim2.new(0, 0, 0, 500),
+    Parent = MainWindow
+})
+
+for i, TabData in ipairs(Tabs) do
+    local TabBtn = CreateInstance("TextButton", {
+        Text = TabData.Name,
+        TextSize = 13,
+        TextColor3 = Colors.Text,
+        Font = Enum.Font.GothamBold,
+        BackgroundColor3 = Color3.fromRGB(25, 25, 45),
+        Position = UDim2.new(0, (i-1) * 130, 0, 0),
+        Size = UDim2.new(0, 125, 1, 0),
+        Parent = TabButtonContainer,
+        AutoButtonColor = false
+    })
+    AddCorner(TabBtn, 6)
+    
+    table.insert(TabButtons, TabBtn)
+    
+    local TabPage = CreateInstance("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
+        Visible = i == 1,
+        Parent = ContentArea
+    })
+    
+    TabPages[TabData.Key] = {
+        Button = TabBtn,
+        Page = TabPage,
+        Key = TabData.Key
+    }
+    
+    TabBtn.MouseButton1Click:Connect(function()
+        CurrentTab = TabData.Key
+        for Key, Tab in pairs(TabPages) do
+            Tab.Page.Visible = (Key == TabData.Key)
+            Tab.Button.BackgroundColor3 = (Key == TabData.Key) and Colors.Primary or Color3.fromRGB(25, 25, 45)
+        end
+    end)
+end
+
+-- ============ 首页内容 ============
+local HomePage = TabPages["Home"].Page
+
+CreateInstance("TextLabel", {
+    Text = "👑 欢迎使用AI智能脚本生成系统",
+    TextSize = 22,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 20),
+    Size = UDim2.new(0, 660, 0, 30),
+    Parent = HomePage
+})
+
+CreateInstance("TextLabel", {
+    Text = "🔥 接入 SenseNova API | 完全重写版本\n✨ 支持多种脚本类型、AI辅助生成、脚本保存管理",
+    TextSize = 12,
+    TextColor3 = Colors.Text,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 55),
+    Size = UDim2.new(0, 660, 0, 50),
+    TextWrapped = true,
+    Parent = HomePage
+})
+
+local StatFrame = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Surface,
+    Position = UDim2.new(0, 20, 0, 110),
+    Size = UDim2.new(0, 660, 0, 80),
+    Parent = HomePage
+})
+AddCorner(StatFrame, 8)
+
+CreateInstance("TextLabel", {
+    Text = "📊 系统统计",
+    TextSize = 14,
+    TextColor3 = Colors.Accent,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 5),
+    Size = UDim2.new(0, 200, 0, 20),
+    Parent = StatFrame
+})
+
+local Stats = {
+    {Icon = "📝", Label = "脚本模板", Value = "15+"},
+    {Icon = "🤖", Label = "AI模型", Value = "SenseNova-5.5"},
+    {Icon = "💾", Label = "已保存", Value = "0"},
+    {Icon = "⚡", Label = "执行次数", Value = "0"}
+}
+
+for i, Stat in ipairs(Stats) do
+    local StatBox = CreateInstance("Frame", {
+        BackgroundColor3 = Colors.Primary,
+        Position = UDim2.new(0, 10 + (i-1) * 155, 0, 35),
+        Size = UDim2.new(0, 150, 0, 35),
+        Parent = StatFrame
+    })
+    AddCorner(StatBox, 6)
+    
+    CreateInstance("TextLabel", {
+        Text = Stat.Icon .. " " .. Stat.Label,
+        TextSize = 11,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 5, 0, 2),
+        Size = UDim2.new(0, 140, 0, 15),
+        Parent = StatBox
+    })
+    
+    CreateInstance("TextLabel", {
+        Text = Stat.Value,
+        TextSize = 16,
+        TextColor3 = Colors.Gold,
+        Font = Enum.Font.GothamBold,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 5, 0, 17),
+        Size = UDim2.new(0, 140, 0, 15),
+        Parent = StatBox
+    })
+end
+
+CreateInstance("TextLabel", {
+    Text = "⚡ 快速操作",
+    TextSize = 14,
+    TextColor3 = Colors.Accent,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 205),
+    Size = UDim2.new(0, 200, 0, 20),
+    Parent = HomePage
+})
+
+local QuickButtons = {
+    {Text = "📝 新建脚本", Color = Colors.Primary, Action = function()
+        CurrentTab = "AIGen"
+        TabPages["AIGen"].Page.Visible = true
+        TabPages["Home"].Page.Visible = false
+    end},
+    {Text = "💾 查看保存", Color = Colors.Success, Action = function()
+        CurrentTab = "Saved"
+        TabPages["Saved"].Page.Visible = true
+        TabPages["Home"].Page.Visible = false
+    end},
+    {Text = "📋 查看日志", Color = Colors.Text, Action = function()
+        CurrentTab = "Logs"
+        TabPages["Logs"].Page.Visible = true
+        TabPages["Home"].Page.Visible = false
+    end}
+}
+
+for i, QuickBtn in ipairs(QuickButtons) do
+    local Btn = CreateInstance("TextButton", {
+        Text = QuickBtn.Text,
+        TextSize = 13,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold,
+        BackgroundColor3 = QuickBtn.Color,
+        Position = UDim2.new(0, 20 + (i-1) * 210, 0, 240),
+        Size = UDim2.new(0, 200, 0, 35),
+        Parent = HomePage,
+        AutoButtonColor = false
+    })
+    AddCorner(Btn, 8)
+    Btn.MouseButton1Click:Connect(QuickBtn.Action)
+end
+
+-- ============ AI生成页面（核心修改区） ============
+local AIGenPage = TabPages["AIGen"].Page
+
+CreateInstance("TextLabel", {
+    Text = "🤖 AI脚本生成器 (SenseNova)",
+    TextSize = 18,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 15),
+    Size = UDim2.new(0, 660, 0, 25),
+    Parent = AIGenPage
+})
+
+-- API Key 输入框
+CreateInstance("TextLabel", {
+    Text = "🔑 API Key",
+    TextSize = 12,
+    TextColor3 = Colors.Text,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 50),
+    Size = UDim2.new(0, 60, 0, 20),
+    Parent = AIGenPage
+})
+
+local ApiKeyInput = CreateInstance("TextBox", {
+    Text = "",
+    TextSize = 11,
+    TextColor3 = Colors.Text,
+    BackgroundColor3 = Color3.fromRGB(20, 20, 35),
+    Position = UDim2.new(0, 90, 0, 50),
+    Size = UDim2.new(0, 300, 0, 25),
+    PlaceholderText = "在此输入 SenseNova API Key",
+    ClearTextOnFocus = false,
+    Parent = AIGenPage
+})
+AddCorner(ApiKeyInput, 6)
+
+-- 脚本类型选择
+CreateInstance("TextLabel", {
+    Text = "📋 脚本类型",
+    TextSize = 12,
+    TextColor3 = Colors.Text,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 85),
+    Size = UDim2.new(0, 100, 0, 20),
+    Parent = AIGenPage
+})
+
+local ScriptTypes = {"飞行脚本", "自动农场", "透视/ESP", "自瞄", "加速/移动", "自定义"}
+local TypeButtonsFrame = CreateInstance("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 120, 0, 85),
+    Size = UDim2.new(0, 580, 0, 25),
+    Parent = AIGenPage
+})
+
+local SelectedType = "自定义"
+for i, TypeName in ipairs(ScriptTypes) do
+    local TypeBtn = CreateInstance("TextButton", {
+        Text = TypeName,
+        TextSize = 11,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        Font = Enum.Font.GothamBold,
+        BackgroundColor3 = (TypeName == SelectedType) and Colors.Success or Colors.Primary,
+        Position = UDim2.new(0, (i-1) * 95, 0, 0),
+        Size = UDim2.new(0, 90, 0, 25),
+        Parent = TypeButtonsFrame,
+        AutoButtonColor = false
+    })
+    AddCorner(TypeBtn, 6)
+    TypeBtn.MouseButton1Click:Connect(function()
+        SelectedType = TypeName
+        for _, btn in ipairs(TypeButtonsFrame:GetChildren()) do
+            if btn:IsA("TextButton") then
+                btn.BackgroundColor3 = (btn.Text == TypeName) and Colors.Success or Colors.Primary
+            end
+        end
+    end)
+end
+
+-- 描述输入框
+CreateInstance("TextLabel", {
+    Text = "📝 需求描述",
+    TextSize = 12,
+    TextColor3 = Colors.Text,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 120),
+    Size = UDim2.new(0, 100, 0, 20),
+    Parent = AIGenPage
+})
+
+local DescInput = CreateInstance("TextBox", {
+    Text = "",
+    TextSize = 12,
+    TextColor3 = Colors.Text,
+    BackgroundColor3 = Color3.fromRGB(20, 20, 35),
+    Position = UDim2.new(0, 20, 0, 145),
+    Size = UDim2.new(0, 660, 0, 100),
+    PlaceholderText = "详细描述你想要的脚本功能... 例如：'飞行脚本，按空格上升，按Shift下降，WASD移动，速度可调'",
+    ClearTextOnFocus = false,
+    TextWrapped = true,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    Parent = AIGenPage
+})
+AddCorner(DescInput, 8)
+
+-- 生成按钮
+local GenerateBtn = CreateInstance("TextButton", {
+    Text = "✨ 生成脚本 (调用 API)",
+    TextSize = 14,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    BackgroundColor3 = Colors.Success,
+    Position = UDim2.new(0, 20, 0, 255),
+    Size = UDim2.new(0, 200, 0, 35),
+    Parent = AIGenPage,
+    AutoButtonColor = false
+})
+AddCorner(GenerateBtn, 8)
+
+-- 状态标签
+local StatusLabel = CreateInstance("TextLabel", {
+    Text = "就绪 | 模型: " .. API_CONFIG.Model,
+    TextSize = 11,
+    TextColor3 = Colors.Text,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 230, 0, 260),
+    Size = UDim2.new(0, 450, 0, 25),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = AIGenPage
+})
+
+-- 结果显示框
+local ResultFrame = CreateInstance("Frame", {
+    BackgroundColor3 = Colors.Surface,
+    Position = UDim2.new(0, 20, 0, 300),
+    Size = UDim2.new(0, 660, 0, 150),
+    Visible = false,
+    Parent = AIGenPage
+})
+AddCorner(ResultFrame, 8)
+
+local ResultText = CreateInstance("TextLabel", {
+    Text = "",
+    TextSize = 11,
+    TextColor3 = Colors.Text,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 10, 0, 10),
+    Size = UDim2.new(0, 640, 0, 130),
+    TextWrapped = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    Parent = ResultFrame
+})
+
+-- ============ 核心 API 调用逻辑 (唯一修改处) ============
+local function CallSenseNovaAPI(prompt, apiKey, callback)
+    if not apiKey or apiKey == "" then
+        callback(false, "请先输入 API Key")
+        return
+    end
+
+    local url = API_CONFIG.BaseURL .. API_CONFIG.Endpoint
+    local headers = {
+        ["Content-Type"] = "application/json",
+        ["Authorization"] = "Bearer " .. apiKey
+    }
+
+    -- 构建 System Prompt，强制输出纯 Lua 代码
+    local systemPrompt = [[你是 Roblox Lua 脚本专家。请根据用户需求生成完整、可直接运行的 Luau 代码。
+要求：
+1. 只输出代码，不要任何 markdown 代码块标记，不要解释性文字。
+2. 使用 game:GetService 获取服务，避免全局变量污染。
+3. 处理 CharacterAdded 等生命周期事件。
+4. 包含基本的错误处理 (pcall)。
+5. 适配常见执行器环境。]]
+
+    local body = {
+        model = API_CONFIG.Model,
+        messages = {
+            {role = "system", content = systemPrompt},
+            {role = "user", content = "类型: " .. SelectedType .. "\n需求: " .. prompt}
+        },
+        temperature = API_CONFIG.Temperature,
+        max_tokens = API_CONFIG.MaxTokens,
+        stream = false
+    }
+
+    local success, result = pcall(function()
+        return HttpService:RequestAsync({
+            Url = url,
+            Method = "POST",
+            Headers = headers,
+            Body = HttpService:JSONEncode(body)
+        })
+    end)
+
+    if not success then
+        callback(false, "网络请求失败: " .. tostring(result))
+        return
+    end
+
+    if result.StatusCode ~= 200 then
+        callback(false, "API 错误 " .. result.StatusCode .. ": " .. result.Body)
+        return
+    end
+
+    local decodeSuccess, data = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+    end)
+
+    if not decodeSuccess or not data.choices or not data.choices[1] or not data.choices[1].message then
+        callback(false, "响应格式异常: " .. result.Body)
+        return
+    end
+
+    local code = data.choices[1].message.content
+    -- 清理可能残留的 markdown 标记
+    code = code:gsub("^```[%w]*\n", ""):gsub("\n```$", ""):gsub("^```", ""):gsub("```$", "")
+    
+    callback(true, code)
+end
+
+GenerateBtn.MouseButton1Click:Connect(function()
+    local Desc = DescInput.Text
+    local ApiKey = ApiKeyInput.Text
+    
+    if Desc == "" then
+        ShowNotification("⚠️ 警告", "请输入脚本需求描述")
+        return
+    end
+    
+    if ApiKey == "" then
+        ShowNotification("⚠️ 警告", "请输入 API Key")
+        return
+    end
+
+    GenerateBtn.Text = "⏳ 生成中..."
+    GenerateBtn.BackgroundColor3 = Colors.Accent
+    GenerateBtn.AutoButtonColor = false
+    StatusLabel.Text = "正在调用 SenseNova API..."
+    ResultFrame.Visible = false
+
+    task.spawn(function()
+        CallSenseNovaAPI(Desc, ApiKey, function(success, response)
+            -- 回到主线程更新 UI
+            task.defer(function()
+                GenerateBtn.Text = "✨ 生成脚本 (调用 API)"
+                GenerateBtn.BackgroundColor3 = Colors.Success
+                
+                if success then
+                    StatusLabel.Text = "✅ 生成成功 | " .. os.date("%H:%M:%S")
+                    ResultFrame.Visible = true
+                    ResultText.Text = response
+                    
+                    -- 自动保存到历史
+                    table.insert(_G.AIScript.SavedScripts, {
+                        Name = (SelectedType .. ": " .. Desc):sub(1, 30),
+                        Code = response,
+                        Time = os.date("%H:%M:%S"),
+                        Type = SelectedType
+                    })
+                    
+                    ShowNotification("✅ 成功", "脚本已生成并保存到历史")
+                else
+                    StatusLabel.Text = "❌ 失败: " .. response:sub(1, 50)
+                    ShowNotification("❌ 生成失败", response)
+                end
+            end)
+        end)
+    end)
+end)
+
+-- 操作按钮
+local CopyBtn = CreateInstance("TextButton", {
+    Text = "📋 复制代码",
+    TextSize = 12,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    BackgroundColor3 = Colors.Primary,
+    Position = UDim2.new(0, 20, 0, 460),
+    Size = UDim2.new(0, 100, 0, 30),
+    Parent = AIGenPage,
+    AutoButtonColor = false
+})
+AddCorner(CopyBtn, 6)
+
+CopyBtn.MouseButton1Click:Connect(function()
+    if ResultText.Text ~= "" then
+        pcall(function()
+            setclipboard(ResultText.Text)
+            ShowNotification("✅ 成功", "代码已复制到剪贴板")
+        end)
+    else
+        ShowNotification("⚠️ 提示", "先生成脚本再复制")
+    end
+end)
+
+local ExecuteBtn = CreateInstance("TextButton", {
+    Text = "▶️ 直接执行",
+    TextSize = 12,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    Font = Enum.Font.GothamBold,
+    BackgroundColor3 = Colors.Success,
+    Position = UDim2.new(0, 130, 0, 460),
+    Size = UDim2.new(0, 100, 0, 30),
+    Parent = AIGenPage,
+    AutoButtonColor = false
+})
+AddCorner(ExecuteBtn, 6)
+
+ExecuteBtn.MouseButton1Click:Connect(function()
+    if ResultText.Text ~= "" then
+        local Success, Error = pcall(function()
+            loadstring(ResultText.Text)()
+        end)
+        if Success then
+            ShowNotification("✅ 执行成功", "脚本已在当前环境运行")
+        else
+            ShowNotification("❌ 执行失败", Error or "未知错误")
+        end
+    else
+        ShowNotification("⚠️ 提示", "先生成脚本再执行")
+    end
+end)
+
+-- ============ 保存的脚本页面 ============
+local SavedPage = TabPages["Saved"].Page
+
+CreateInstance("TextLabel", {
+    Text = "💾 已保存的脚本历史",
+    TextSize = 18,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 15),
+    Size = UDim2.new(0, 660, 0, 25),
+    Parent = SavedPage
+})
+
+local SavedListFrame = CreateInstance("ScrollingFrame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 50),
+    Size = UDim2.new(0, 660, 0, 420),
+    ScrollBarThickness = 4,
+    ScrollBarImageColor3 = Colors.Primary,
+    BorderSizePixel = 0,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    Parent = SavedPage
+})
+
+local SavedListLayout = CreateInstance("UIListLayout", {
+    Padding = UDim.new(0, 8),
+    Parent = SavedListFrame
+})
+
+local function RefreshSavedList()
+    for _, Child in ipairs(SavedListFrame:GetChildren()) do
+        if Child:IsA("Frame") then Child:Destroy() end
+    end
+    
+    if #_G.AIScript.SavedScripts == 0 then
+        local EmptyLabel = CreateInstance("TextLabel", {
+            Text = "暂无已保存的脚本\n点击「AI生成」标签页创建你的第一个脚本",
+            TextSize = 14,
+            TextColor3 = Colors.Text,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 60),
+            Parent = SavedListFrame
+        })
+        SavedListFrame.CanvasSize = UDim2.new(0, 0, 0, 60)
+        return
+    end
+    
+    local totalHeight = 0
+    for i, ScriptData in ipairs(_G.AIScript.SavedScripts) do
+        local ScriptItem = CreateInstance("Frame", {
+            BackgroundColor3 = Colors.Surface,
+            Size = UDim2.new(1, 0, 0, 70),
+            Parent = SavedListFrame,
+            LayoutOrder = -i -- 最新在顶部
+        })
+        AddCorner(ScriptItem, 6)
+        totalHeight = totalHeight + 78
+        
+        CreateInstance("TextLabel", {
+            Text = "📝 " .. ScriptData.Name,
+            TextSize = 13,
+            TextColor3 = Colors.Accent,
+            Font = Enum.Font.GothamBold,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 10, 0, 5),
+            Size = UDim2.new(1, -120, 0, 20),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = ScriptItem
+        })
+        
+        CreateInstance("TextLabel", {
+            Text = "⏰ " .. ScriptData.Time .. " | 类型: " .. (ScriptData.Type or "未知"),
+            TextSize = 11,
+            TextColor3 = Colors.Text,
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 10, 0, 28),
+            Size = UDim2.new(1, -120, 0, 18),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = ScriptItem
+        })
+        
+        CreateInstance("TextLabel", {
+            Text = ScriptData.Code:sub(1, 80) .. "...",
+            TextSize = 10,
+            TextColor3 = Color3.fromRGB(150, 150, 180),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 10, 0, 48),
+            Size = UDim2.new(1, -120, 0, 18),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            Parent = ScriptItem
+        })
+        
+        -- 按钮组
+        local BtnContainer = CreateInstance("Frame", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, -110, 0, 10),
+            Size = UDim2.new(0, 100, 0, 50),
+            Parent = ScriptItem
+        })
+        
+        local LoadBtn = CreateInstance("TextButton", {
+            Text = "📋 加载",
+            TextSize = 10,
+            TextColor3 = Color3.fromRGB(255, 255, 255),
+            Font = Enum.Font.GothamBold,
+            BackgroundColor3 = Colors.Primary,
+            Position = UDim2.new(0, 0, 0, 0),
+            Size = UDim2.new(0, 48, 0, 22),
+            Parent = BtnContainer,
+            AutoButtonColor = false
+        })
+        AddCorner(LoadBtn, 4)
+        LoadBtn.MouseButton1Click:Connect(function()
+            ResultFrame.Visible = true
+            ResultText.Text = ScriptData.Code
+            CurrentTab = "AIGen"
+            TabPages["AIGen"].Page.Visible = true
+            TabPages["Saved"].Page.Visible = false
+            StatusLabel.Text = "📂 已加载历史脚本: " .. ScriptData.Name
+        end)
+        
+        local DelBtn = CreateInstance("TextButton", {
+            Text = "🗑️",
+            TextSize = 12,
+            BackgroundColor3 = Colors.Error,
+            Position = UDim2.new(0, 52, 0, 0),
+            Size = UDim2.new(0, 22, 0, 22),
+            Parent = BtnContainer,
+            AutoButtonColor = false
+        })
+        AddCorner(DelBtn, 4)
+        DelBtn.MouseButton1Click:Connect(function()
+            table.remove(_G.AIScript.SavedScripts, i)
+            RefreshSavedList()
+        end)
+        
+        local ExecBtn = CreateInstance("TextButton", {
+            Text = "▶️",
+            TextSize = 12,
+            BackgroundColor3 = Colors.Success,
+            Position = UDim2.new(0, 76, 0, 0),
+            Size = UDim2.new(0, 22, 0, 22),
+            Parent = BtnContainer,
+            AutoButtonColor = false
+        })
+        AddCorner(ExecBtn, 4)
+        ExecBtn.MouseButton1Click:Connect(function()
+            pcall(function() loadstring(ScriptData.Code)() end)
+            ShowNotification("▶️ 执行", "已尝试运行: " .. ScriptData.Name)
+        end)
+    end
+    
+    SavedListFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+end
+
+RefreshSavedList()
+
+-- ============ 日志页面 ============
+local LogsPage = TabPages["Logs"].Page
+
+CreateInstance("TextLabel", {
+    Text = "📋 执行日志",
+    TextSize = 18,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 15),
+    Size = UDim2.new(0, 660, 0, 25),
+    Parent = LogsPage
+})
+
+local LogsDisplay = CreateInstance("TextLabel", {
+    Text = "📋 系统日志已准备就绪\n✅ AI脚本系统已成功加载\n🔥 SenseNova API 接入完成\n💡 请在「AI生成」页输入 Key 和需求开始使用",
+    TextSize = 11,
+    TextColor3 = Colors.Text,
+    BackgroundColor3 = Colors.Surface,
+    BackgroundTransparency = 0.3,
+    Position = UDim2.new(0, 20, 0, 50),
+    Size = UDim2.new(0, 660, 0, 380),
+    TextWrapped = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    Parent = LogsPage
+})
+AddCorner(LogsDisplay, 8)
+
+-- ============ 设置页面 ============
+local SettingsPage = TabPages["Settings"].Page
+
+CreateInstance("TextLabel", {
+    Text = "⚙️ 设置",
+    TextSize = 18,
+    TextColor3 = Colors.Gold,
+    Font = Enum.Font.GothamBold,
+    BackgroundTransparency = 1,
+    Position = UDim2.new(0, 20, 0, 15),
+    Size = UDim2.new(0, 660, 0, 25),
+    Parent = SettingsPage
+})
+
+local Settings = {
+    {Name = "🌙 深色模式", Status = "✅ 开启"},
+    {Name = "💾 自动保存历史", Status = "✅ 开启"},
+    {Name = "🔔 操作通知", Status = "✅ 开启"},
+    {Name = "🤖 API 地址", Status = API_CONFIG.BaseURL},
+    {Name = "🧠 默认模型", Status = API_CONFIG.Model},
+    {Name = "🌡️ Temperature", Status = tostring(API_CONFIG.Temperature)},
+    {Name = "📏 Max Tokens", Status = tostring(API_CONFIG.MaxTokens)}
+}
+
+for i, Setting in ipairs(Settings) do
+    local Row = CreateInstance("Frame", {
+        BackgroundColor3 = Colors.Surface,
+        Position = UDim2.new(0, 20, 0, 50 + (i-1) * 40),
+        Size = UDim2.new(0, 660, 0, 34),
+        Parent = SettingsPage
+    })
+    AddCorner(Row, 6)
+    
+    CreateInstance("TextLabel", {
+        Text = Setting.Name,
+        TextSize = 13,
+        TextColor3 = Colors.Text,
+        Font = Enum.Font.GothamBold,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 15, 0, 0),
+        Size = UDim2.new(0, 300, 1, 0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = Row
+    })
+    
+    CreateInstance("TextLabel", {
+        Text = Setting.Status,
+        TextSize = 12,
+        TextColor3 = Colors.Accent,
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 500, 0, 0),
+        Size = UDim2.new(0, 150, 1, 0),
+        TextXAlignment = Enum.TextXAlignment.Right,
+        Parent = Row
+    })
+end
+
+-- ============ 初始化完成 ============
+TabPages["Home"].Page.Visible = true
+TabButtons[1].BackgroundColor3 = Colors.Primary
+
+ShowNotification("🤖 SenseNova 版已就绪", "请在 AI生成 页输入 API Key 后使用", 3)
+print("✅ AI脚本生成系统 v2.0 (SenseNova) 加载完成")
